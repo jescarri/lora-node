@@ -12,11 +12,36 @@ The first power rail supplies power exclusively to the microcontroller (MCU), wh
 
 ![Board Back](https://github.com/jescarri/lora-node/blob/main/images/board/3d-model-back.png?raw=true "Board Back")
 
+There's a WS2812B LED that provides feedback to the user.
+
+- Red: The node does not have a valid configuration or is in WebConfig state (AP Mode).
+
+- Green: Node successfully joined TTN after configuration.
+
+- Orange: Error Joining the TTN network.
+
+- Unless the above events happen, the LED remains powered off at all times.
+
 # The Firmware
 
 The Lora deep sleep routines are based on [Andreas Spiess Lora Mailbox with DeepSleep](https://github.com/SensorsIot/MailboxNotifier/tree/main), but instead of using the EEPROM routines to save the LMIC status, I used the (Preferences library)[https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html]
 
 This project uses the ArduinoLMICC library.
+
+This Firmware has a lot of debug code and requires some re-organization it is a PoC and it has been running for about 3 moths without any issue.
+
+ToDo:
+----
+
+1. Add downlink capabilities to trigger WiFi join and do OTA.
+
+2. Investigate how to add crypto validation of the firmware.
+
+3. Re organize the code, WiFi menu and config is a mess.
+
+4. Remove debug code.
+
+5. Standardize LED feedback colors.
 
 # Telemetry format
 

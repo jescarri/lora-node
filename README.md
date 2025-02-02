@@ -94,6 +94,16 @@ There's also a Telegram bot that will notify you when the Node has not been seen
 
 ![MQTT Autodiscovery](https://github.com/jescarri/lora-node/blob/main/images/home-assistant/mqtt-auto-discovery.png?raw=true "Home Assistant MQTT Autodiscovery")
 
+MQTT Device
+-----------
+
+![MQTT Device](https://github.com/jescarri/lora-node/blob/main/images/home-assistant/mqtt-device.png?raw=true "MQTT Device")
+
+Home assistant Panel
+------------------
+
+![HA Panel](https://github.com/jescarri/lora-node/blob/main/images/home-assistant/dashboard.png?raw=true "HA Panel")
+
 # Enclosure
 
 Under the enclosure directory you will find STL files to print the sensor enclosure, you can 3D print the board holder and it will fit a 2.5 Inches PVC Pipe ( Internal Diameter ).

@@ -67,7 +67,7 @@ Data is sent to the Things Network using CayenneLPP, This project uses the (elec
 
 ![Wifi Manager](https://github.com/jescarri/lora-node/blob/main/images/setup/WifiManager.png?raw=true "WiFi Manager")
 
-![TTN and Calibration Settings](https://github.com/jescarri/lora-node/blob/main/images/setup/TTN_settings.png?raw=true "TTN and Calibration Settings)
+![TTN and Calibration Settings](https://github.com/jescarri/lora-node/blob/main/images/setup/TTN_settings.png?raw=true "TTN and Calibration Settings")
 
 
 # Soil moisture sensor calibration

@@ -1,0 +1,7 @@
+.pio
+.clang_complete
+.gcc-flags.json
+.ccls
+tmp/
+*.lck
+esp32-board.kicad_pcb/*

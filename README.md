@@ -63,6 +63,13 @@ Data is sent to the Things Network using CayenneLPP, This project uses the (elec
 
 3. Connect to the wifi and open 192.168.4.1 in your web browser, and configure the node paramethers.
 
+3.1 Provisioning Menu:
+
+![Wifi Manager](https://github.com/jescarri/lora-node/blob/main/images/setup/WifiManager.png?raw=true "WiFi Manager")
+
+![TTN and Calibration Settings](https://github.com/jescarri/lora-node/blob/main/images/setup/TTN_settings.png?raw=true "TTN and Calibration Settings)
+
+
 # Soil moisture sensor calibration
 
 Once the node is provisioned, and joined your applicaton in The things network.

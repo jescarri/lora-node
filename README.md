@@ -24,7 +24,7 @@ There's a WS2812B LED that provides feedback to the user.
 
 # The Firmware
 
-The Lora deep sleep routines are based on [Andreas Spiess Lora Mailbox with DeepSleep](https://github.com/SensorsIot/MailboxNotifier/tree/main), but instead of using the EEPROM routines to save the LMIC status, I used the (Preferences library)[https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html]
+The Lora deep sleep routines are based on [Andreas Spiess Lora Mailbox with DeepSleep](https://github.com/SensorsIot/MailboxNotifier/tree/main), but instead of using the EEPROM routines to save the LMIC status, I used the [Preferences library](https://docs.espressif.com/projects/arduino-esp32/en/latest/tutorials/preferences.html)
 
 This project uses the ArduinoLMICC library.
 

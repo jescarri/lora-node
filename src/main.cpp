@@ -4,6 +4,7 @@
 #include <Preferences.h>
 #include <lmic.h>
 
+#include "esp_sleep.h"
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
 #include "menu.hpp"
@@ -54,6 +55,7 @@ const unsigned TX_INTERVAL = 3600;
 
 void setup() {
   pinMode(VCC_ENA_PIN, OUTPUT);
+
   digitalWrite(VCC_ENA_PIN, HIGH);
   pinMode(START_WEB_CONFIG_PIN, INPUT);
   WiFi.mode(WIFI_OFF);
@@ -162,13 +164,15 @@ void GoDeepSleep() {
   FastLED.show();
   maxlipo.hibernate();
   digitalWrite(VCC_ENA_PIN, LOW);
+  gpio_hold_en((gpio_num_t)VCC_ENA_PIN);
+  delay(100);
+  gpio_deep_sleep_hold_en();
   WiFi.mode(WIFI_OFF);
   btStop();
   gpio_reset_pin(GPIO_NUM_0);
   gpio_reset_pin(GPIO_NUM_2);
   gpio_reset_pin(GPIO_NUM_4);
   gpio_reset_pin(GPIO_NUM_12);
-  gpio_reset_pin(GPIO_NUM_13);
   gpio_reset_pin(GPIO_NUM_14);
   gpio_reset_pin(GPIO_NUM_15);
   gpio_reset_pin(GPIO_NUM_25);

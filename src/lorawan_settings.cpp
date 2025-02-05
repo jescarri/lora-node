@@ -28,10 +28,21 @@ void load_lmic() {
   Serial.println("END of LoadLmic");
 }
 
+void save_runtime(long runtime) {
+  lorawan_preferences.putLong(RUNTIME_KEY, runtime);
+}
+
+long get_previous_runtime() {
+  if (lorawan_preferences.isKey(LMIC_BYTES_KEY_NAME) != 0) {
+    return lorawan_preferences.getLong(RUNTIME_KEY);
+  }
+  return 0;
+}
+
 void resetLmic() {
-   if (lorawan_preferences.isKey(LMIC_BYTES_KEY_NAME)){
+  if (lorawan_preferences.isKey(LMIC_BYTES_KEY_NAME)) {
     lorawan_preferences.remove(LMIC_BYTES_KEY_NAME);
-   }
+  }
 }
 
 bool lorawanConfigPresent() {

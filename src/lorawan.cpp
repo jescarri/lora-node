@@ -243,6 +243,7 @@ void do_send(osjob_t *j) {
   lpp.addGenericSensor(6, get_calibration_air_value());
   lpp.addGenericSensor(7, get_calibration_water_value());
   lpp.addGenericSensor(8, get_sleep_time_seconds());
+  lpp.addGenericSensor(9, get_previous_runtime());
 
   // Check if there is not a current TX/RX job running
   Serial.println("do_send");

@@ -4,6 +4,8 @@
 #include <Preferences.h>
 #include <lmic.h>
 
+#include "esp_bt.h"
+
 #include "esp_sleep.h"
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
@@ -54,22 +56,28 @@ const lmic_pinmap lmic_pins = {
 const unsigned TX_INTERVAL = 3600;
 
 void setup() {
-  pinMode(VCC_ENA_PIN, OUTPUT);
-
-  digitalWrite(VCC_ENA_PIN, HIGH);
-  pinMode(START_WEB_CONFIG_PIN, INPUT);
+  setCpuFrequencyMhz(40);
   WiFi.mode(WIFI_OFF);
+  WiFi.disconnect(true);
+  esp_wifi_stop();
+  esp_bt_controller_disable();
   btStop();
-
+  pinMode(VCC_ENA_PIN, OUTPUT);
+  digitalWrite(VCC_ENA_PIN, HIGH);
+  gpio_hold_dis((gpio_num_t)VCC_ENA_PIN);
+  delay(100);
+  pinMode(START_WEB_CONFIG_PIN, INPUT);
   Wire.begin(21, 22);
   delay(100);
   Serial.begin(115200);
   adc_power_acquire();
   randomSeed(analogRead(0));
   // Init and Wake the Lipo Cel:
+  maxlipo.wake();
+  maxlipo.sleep(false);
+
   if (maxlipo.begin()) {
     // Wake up the lipo gauge
-    maxlipo.wake();
     maxLipoFound = true;
     Serial.println("LIPO GAUGE FOUND");
   } else {
@@ -91,6 +99,8 @@ void setup() {
   Serial.println(" seconds");
 
   if ((startWebConfig == true) || (!otaa_cfg)) {
+    setCpuFrequencyMhz(80);
+    WiFi.disconnect(false);
     resetLmic();
     startWebConf();
   }
@@ -162,13 +172,18 @@ void GoDeepSleep() {
   Serial.println(sleepTime);
   leds[0] = CRGB::Black;
   FastLED.show();
+
+  WiFi.mode(WIFI_OFF);
+  WiFi.disconnect(true);
+  btStop();
+
   maxlipo.hibernate();
   digitalWrite(VCC_ENA_PIN, LOW);
   gpio_hold_en((gpio_num_t)VCC_ENA_PIN);
   delay(100);
   gpio_deep_sleep_hold_en();
-  WiFi.mode(WIFI_OFF);
-  btStop();
+  maxlipo.enableSleep(true);
+  maxlipo.sleep(true);
   gpio_reset_pin(GPIO_NUM_0);
   gpio_reset_pin(GPIO_NUM_2);
   gpio_reset_pin(GPIO_NUM_4);
@@ -190,6 +205,13 @@ void GoDeepSleep() {
   Serial.println(F("Go DeepSleep"));
   PrintRuntime();
   Serial.flush();
+
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_SLOW_MEM, ESP_PD_OPTION_OFF);
+  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
+  esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);
+  save_runtime(millis() / 1000);
+  setCpuFrequencyMhz(20);
   esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
   esp_deep_sleep_start();
 }

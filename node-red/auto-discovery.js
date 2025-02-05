@@ -149,6 +149,32 @@ var sleep_time = {
     topic: "homeassistant/sensor/"+ msg.payload.end_device_ids.device_id + "/duration/config",
 }
 
+var run_time = {
+   payload: {
+        name: "run_time",
+        state_topic: "ttn/soil-conditions/devices/"+ msg.payload.end_device_ids.device_id+"/up",
+        value_template: "{{ value_json.uplink_message.decoded_payload.generic_9 }}",
+        platform: "sensor",
+        device_class: "duration",
+        force_update: true,
+        state_class: "measurement",
+        availability_topic: "homeassistant/device_tracker/" + msg.payload.end_device_ids.device_id + "/availability",
+        payload_available: "online",
+        availability_template: "online",
+        availability_mode: "latest",
+        unit_of_measurement: "s",
+        object_id: msg.payload.end_device_ids.device_id,
+        unique_id: msg.payload.end_device_ids.dev_eui + "_run_time_duration",
+        device: {
+           hw_version: "v1.0.0",
+           identifiers:  msg.payload.end_device_ids.dev_eui,
+           manufacturer: "VA7RCV",
+           name: msg.payload.end_device_ids.device_id,
+        },
+    },
+    topic: "homeassistant/sensor/"+ msg.payload.end_device_ids.device_id + "/runtime/config",
+}
+
 var rx_time = {
    payload: {
         name: "last_rx",
@@ -188,6 +214,7 @@ var debug_data = {
         battery_voltage: msg.payload.uplink_message.decoded_payload.voltage_1,
         dev_eui: msg.payload.end_device_ids.dev_eui,
         last_rx: dIso,
+        runtime: msg.payload.uplink_message.decoded_payload.generic_9,
     },
     topic: "lora/debug/"+msg.payload.end_device_ids.application_ids.application_id+ "/"+ msg.payload.end_device_ids.device_id + "/log",
 }
@@ -201,5 +228,6 @@ return [
     soil_moisture,
     sleep_time,
     rx_time,
+    runtime,
     debug_data
     ];

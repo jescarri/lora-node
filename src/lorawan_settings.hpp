@@ -11,6 +11,7 @@
 #define LMIC_BYTES_KEY_NAME "lmic_struct"
 #define LORAWAN_CONFIG_PRESENT_KEY "lorawan_config"
 #define APP_EUID_KEY "euid"
+#define RUNTIME_KEY "runtime"
 #define MAX_LORAWAN_CONF_CHAR_LEN 100
 
 #define RW_MODE false
@@ -23,6 +24,8 @@ extern CRGB leds[1];
 
 void lorawan_preferences_init();
 void lmic_save();
+void save_runtime(long runtime);
+long get_previous_runtime();
 bool lmic_init_needed();
 void load_lmic();
 void resetLmic();

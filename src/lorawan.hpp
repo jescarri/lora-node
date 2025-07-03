@@ -1,15 +1,15 @@
 #ifndef LORAWAN_HPP_
 #define LORAWAN_HPP_
-#define PIN_LMIC_NSS 18
-#define PIN_LMIC_RST 14
-#define PIN_LMIC_DIO0 26
-#define PIN_LMIC_DIO1 33
-#define PIN_LMIC_DIO2 32
+#define PIN_LMIC_NSS     18
+#define PIN_LMIC_RST     14
+#define PIN_LMIC_DIO0    26
+#define PIN_LMIC_DIO1    33
+#define PIN_LMIC_DIO2    32
 #define MAX_PAYLOAD_SIZE 51
-#define MAX_SENSOR_READ 1
+#define MAX_SENSOR_READ  1
 
-#define SOIL_SENSOR_PIN 34 // ADC1_CH6
-const int AirValue = 2200;
+#define SOIL_SENSOR_PIN 34        // ADC1_CH6
+const int AirValue   = 2200;
 const int WaterValue = 380;
 #include <Arduino.h>
 #include <lmic.h>
@@ -20,12 +20,12 @@ const int WaterValue = 380;
 #include <hal/hal.h>
 
 struct sensorData {
-  float soilMoisturePercentage;
-  float soilMoistureValue;
-  bool lipoGaugeOk;
-  float vBat;
-  float batPercent;
-  float batRate;
+    float soilMoisturePercentage;
+    float soilMoistureValue;
+    bool lipoGaugeOk;
+    float vBat;
+    float batPercent;
+    float batRate;
 };
 
 extern const lmic_pinmap lmic_pins;

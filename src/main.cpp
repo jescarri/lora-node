@@ -85,7 +85,6 @@ void setup() {
     for (gpio_num_t p : AUX_PINS) {
         gpio_hold_dis(p);
     }
-
     pinMode(VCC_ENA_PIN, OUTPUT);
     digitalWrite(VCC_ENA_PIN, HIGH);
     gpio_hold_dis((gpio_num_t)VCC_ENA_PIN);
@@ -223,6 +222,7 @@ void GoDeepSleep() {
     gpio_reset_pin(GPIO_NUM_15);
     gpio_reset_pin(GPIO_NUM_25);
     /* AUX pins (14,26,27,32,33) are *not* reset here */
+
     gpio_reset_pin(GPIO_NUM_34);
     gpio_reset_pin(GPIO_NUM_35);
     gpio_reset_pin(GPIO_NUM_36);
@@ -245,6 +245,7 @@ void GoDeepSleep() {
     gpio_hold_en((gpio_num_t)VCC_ENA_PIN);
     delay(100);
     gpio_deep_sleep_hold_en();
+
     setCpuFrequencyMhz(20);
     esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
     esp_deep_sleep_start();

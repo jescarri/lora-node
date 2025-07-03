@@ -49,6 +49,24 @@ const lmic_pinmap lmic_pins = {
     .spi_freq       = 8000000,
 };
 
+static const gpio_num_t AUX_PINS[] = {
+    /* LoRa radio (SX127x) */
+    GPIO_NUM_5,         // SS  (leave even if NC – harmless)
+    GPIO_NUM_18,        // SCK / NSS
+    GPIO_NUM_19,        // MISO
+    GPIO_NUM_23,        // MOSI
+
+    GPIO_NUM_14,        // RESET
+    GPIO_NUM_26,        // DIO0
+    GPIO_NUM_27,
+    GPIO_NUM_33,        // DIO1
+    GPIO_NUM_32,        // DIO2
+    /* I²C battery gauge */
+    GPIO_NUM_21,        // SDA
+    GPIO_NUM_22,        // SCL
+    GPIO_NUM_4          // MAX17048 ALRT
+};
+
 // Schedule TX every this many seconds
 // Respect Fair Access Policy and Maximum Duty Cycle!
 // https://www.thethingsnetwork.org/docs/lorawan/duty-cycle.html
@@ -62,6 +80,11 @@ void setup() {
     esp_wifi_stop();
     esp_bt_controller_disable();
     btStop();
+    gpio_deep_sleep_hold_dis();
+    gpio_hold_dis(static_cast<gpio_num_t>(VCC_ENA_PIN));
+    for (gpio_num_t p : AUX_PINS) {
+        gpio_hold_dis(p);
+    }
     pinMode(VCC_ENA_PIN, OUTPUT);
     digitalWrite(VCC_ENA_PIN, HIGH);
     gpio_hold_dis((gpio_num_t)VCC_ENA_PIN);
@@ -178,29 +201,35 @@ void GoDeepSleep() {
     btStop();
 
     maxlipo.hibernate();
-    digitalWrite(VCC_ENA_PIN, LOW);
-    gpio_hold_en((gpio_num_t)VCC_ENA_PIN);
-    delay(100);
-    gpio_deep_sleep_hold_en();
     maxlipo.enableSleep(true);
     maxlipo.sleep(true);
+    LMIC_shutdown();
+    Wire.end();
+    SPI.end();
+
+    for (gpio_num_t pin : AUX_PINS) {
+        gpio_set_direction(pin, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(pin, GPIO_FLOATING);
+        gpio_pullup_dis(pin);        // just in case
+        gpio_pulldown_dis(pin);
+        gpio_hold_en(pin);        // latch high-Z through sleep
+    }
+
+    /* -------- 2. Reset only the *always-on* GPIOs -------- */
     gpio_reset_pin(GPIO_NUM_0);
     gpio_reset_pin(GPIO_NUM_2);
-    gpio_reset_pin(GPIO_NUM_4);
     gpio_reset_pin(GPIO_NUM_12);
-    gpio_reset_pin(GPIO_NUM_14);
     gpio_reset_pin(GPIO_NUM_15);
     gpio_reset_pin(GPIO_NUM_25);
-    gpio_reset_pin(GPIO_NUM_26);
-    gpio_reset_pin(GPIO_NUM_27);
-    gpio_reset_pin(GPIO_NUM_32);
-    gpio_reset_pin(GPIO_NUM_33);
+    /* AUX pins (14,26,27,32,33) are *not* reset here */
+
     gpio_reset_pin(GPIO_NUM_34);
     gpio_reset_pin(GPIO_NUM_35);
     gpio_reset_pin(GPIO_NUM_36);
     gpio_reset_pin(GPIO_NUM_37);
     gpio_reset_pin(GPIO_NUM_38);
     gpio_reset_pin(GPIO_NUM_39);
+
     adc_power_release();
     Serial.println(F("Go DeepSleep"));
     PrintRuntime();
@@ -211,6 +240,12 @@ void GoDeepSleep() {
     esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_FAST_MEM, ESP_PD_OPTION_OFF);
     esp_sleep_pd_config(ESP_PD_DOMAIN_XTAL, ESP_PD_OPTION_OFF);
     save_runtime(millis() / 1000);
+
+    digitalWrite(VCC_ENA_PIN, LOW);
+    gpio_hold_en((gpio_num_t)VCC_ENA_PIN);
+    delay(100);
+    gpio_deep_sleep_hold_en();
+
     setCpuFrequencyMhz(20);
     esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
     esp_deep_sleep_start();

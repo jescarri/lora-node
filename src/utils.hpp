@@ -26,8 +26,18 @@ inline void safe_strncpy(char (&dest)[N], const char *src) {
         return;
     }
 
-    // Copy at most N-1 bytes so we always have room for the terminator.
-    std::strncpy(dest, src, N - 1);
-    dest[N - 1] = '\0';
-}
+    // Copy characters one–by–one so we never read past the first null
+    // terminator in `src` *and* we never write past the end of `dest`.
+    // Using a simple loop avoids the well-known foot-guns of `strncpy` —
+    // namely the need to remember the explicit "always terminate" step and
+    // the unnecessary zero-padding it performs when the source is shorter
+    // than the destination.
 
+    std::size_t i = 0;
+    for (; i < N - 1 && src[i] != '\0'; ++i) {
+        dest[i] = src[i];
+    }
+
+    // Always terminate.
+    dest[i] = '\0';
+}

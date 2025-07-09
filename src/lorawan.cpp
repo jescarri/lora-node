@@ -1,5 +1,6 @@
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
+#include "utils.hpp"
 #include <cstring>
 #include "lorawan_settings.hpp"
 #include <Adafruit_MAX1704X.h>
@@ -262,9 +263,7 @@ void do_send(osjob_t *j) {
 // ToDo: Refactor hex string to u1_t array conversion
 void os_getArtEui(u1_t *buf) {
     char char_app_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-    strncpy(char_app_eui, settings_get_string("app_eui").c_str(),
-            sizeof(char_app_eui) - 1);
-    char_app_eui[sizeof(char_app_eui) - 1] = '\0';
+    safe_strncpy(char_app_eui, settings_get_string("app_eui").c_str());
     u1_t app_eui[8];
     int c = 0;
     for (int i = 0; i < 16; i += 2) {
@@ -284,9 +283,7 @@ void os_getArtEui(u1_t *buf) {
 }
 void os_getDevEui(u1_t *buf) {
     char char_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-    strncpy(char_dev_eui, settings_get_string("dev_eui").c_str(),
-            sizeof(char_dev_eui) - 1);
-    char_dev_eui[sizeof(char_dev_eui) - 1] = '\0';
+    safe_strncpy(char_dev_eui, settings_get_string("dev_eui").c_str());
     u1_t dev_eui[8];
     int c = 0;
     for (int i = 0; i < 16; i += 2) {
@@ -307,9 +304,7 @@ void os_getDevEui(u1_t *buf) {
 }
 void os_getDevKey(u1_t *buf) {
     char char_app_key[MAX_LORAWAN_CONF_CHAR_LEN];
-    strncpy(char_app_key, settings_get_string("app_key").c_str(),
-            sizeof(char_app_key) - 1);
-    char_app_key[sizeof(char_app_key) - 1] = '\0';
+    safe_strncpy(char_app_key, settings_get_string("app_key").c_str());
     u1_t app_key[16];
     Serial.print("Read Data: ");
     Serial.println(char_app_key);

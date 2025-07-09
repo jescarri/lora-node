@@ -1,6 +1,7 @@
 #include "menu.hpp"
 #include "lorawan_settings.hpp"
 #include <cstring>
+#include "utils.hpp"
 
 char char_ttn_app_eui[MAX_LORAWAN_CONF_CHAR_LEN];
 char char_ttn_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
@@ -21,66 +22,41 @@ WiFiManagerParameter *sleep_time_hours;
 
 void loadSetings() {
     if (settings_has_key("app_eui")) {
-        strncpy(char_ttn_app_eui, settings_get_string("app_eui").c_str(),
-                sizeof(char_ttn_app_eui) - 1);
-        char_ttn_app_eui[sizeof(char_ttn_app_eui) - 1] = '\0';
+        safe_strncpy(char_ttn_app_eui, settings_get_string("app_eui").c_str());
         Serial.println(char_ttn_app_eui);
     } else {
-        strncpy(char_ttn_app_eui, "00000000", sizeof(char_ttn_app_eui) - 1);
-        char_ttn_app_eui[sizeof(char_ttn_app_eui) - 1] = '\0';
+        safe_strncpy(char_ttn_app_eui, "00000000");
     }
 
     if (settings_has_key("dev_eui")) {
-        strncpy(char_ttn_dev_eui, settings_get_string("dev_eui").c_str(),
-                sizeof(char_ttn_dev_eui) - 1);
-        char_ttn_dev_eui[sizeof(char_ttn_dev_eui) - 1] = '\0';
+        safe_strncpy(char_ttn_dev_eui, settings_get_string("dev_eui").c_str());
     } else {
-        strncpy(char_ttn_dev_eui, "00000000", sizeof(char_ttn_dev_eui) - 1);
-        char_ttn_dev_eui[sizeof(char_ttn_dev_eui) - 1] = '\0';
+        safe_strncpy(char_ttn_dev_eui, "00000000");
     }
 
     if (settings_has_key("app_key")) {
-        strncpy(char_ttn_app_key, settings_get_string("app_key").c_str(),
-                sizeof(char_ttn_app_key) - 1);
-        char_ttn_app_key[sizeof(char_ttn_app_key) - 1] = '\0';
+        safe_strncpy(char_ttn_app_key, settings_get_string("app_key").c_str());
     } else {
-        strncpy(char_ttn_app_key,
-                "00000000000000000000000000000000",
-                sizeof(char_ttn_app_key) - 1);
-        char_ttn_app_key[sizeof(char_ttn_app_key) - 1] = '\0';
+        safe_strncpy(char_ttn_app_key,
+                "00000000000000000000000000000000");
     }
     if (settings_has_key("c_air_v")) {
-        strncpy(calibration_air_value_str,
-                settings_get_string("c_air_v").c_str(),
-                sizeof(calibration_air_value_str) - 1);
-        calibration_air_value_str[sizeof(calibration_air_value_str) - 1] =
-            '\0';
+        safe_strncpy(calibration_air_value_str,
+                settings_get_string("c_air_v").c_str());
     } else {
-        strncpy(calibration_air_value_str, "0",
-                sizeof(calibration_air_value_str) - 1);
-        calibration_air_value_str[sizeof(calibration_air_value_str) - 1] =
-            '\0';
+        safe_strncpy(calibration_air_value_str, "0");
     }
     if (settings_has_key("c_water_v")) {
-        strncpy(calibration_water_value_str,
-                settings_get_string("c_water_v").c_str(),
-                sizeof(calibration_water_value_str) - 1);
-        calibration_water_value_str[sizeof(calibration_water_value_str) - 1] =
-            '\0';
+        safe_strncpy(calibration_water_value_str,
+                settings_get_string("c_water_v").c_str());
     } else {
-        strncpy(calibration_water_value_str, "0",
-                sizeof(calibration_water_value_str) - 1);
-        calibration_water_value_str[sizeof(calibration_water_value_str) - 1] =
-            '\0';
+        safe_strncpy(calibration_water_value_str, "0");
     }
     if (settings_has_key("sleep_hours")) {
-        strncpy(sleep_time_hours_str,
-                settings_get_string("sleep_hours").c_str(),
-                sizeof(sleep_time_hours_str) - 1);
-        sleep_time_hours_str[sizeof(sleep_time_hours_str) - 1] = '\0';
+        safe_strncpy(sleep_time_hours_str,
+                settings_get_string("sleep_hours").c_str());
     } else {
-        strncpy(sleep_time_hours_str, "0", sizeof(sleep_time_hours_str) - 1);
-        sleep_time_hours_str[sizeof(sleep_time_hours_str) - 1] = '\0';
+        safe_strncpy(sleep_time_hours_str, "0");
     }
 }
 

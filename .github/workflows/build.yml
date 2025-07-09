@@ -51,7 +51,7 @@ jobs:
           gcovr \
             --root . \
             --exclude '\.pio/libdeps/' \
-            --xml-pretty \
+            --sonarqube \
             --output coverage.xml
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5

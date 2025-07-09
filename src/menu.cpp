@@ -1,5 +1,6 @@
 #include "menu.hpp"
 #include "lorawan_settings.hpp"
+#include <cstring>
 
 char char_ttn_app_eui[MAX_LORAWAN_CONF_CHAR_LEN];
 char char_ttn_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
@@ -19,41 +20,67 @@ WiFiManagerParameter *calibration_water_value;
 WiFiManagerParameter *sleep_time_hours;
 
 void loadSetings() {
-    if (lorawan_preferences.isKey("app_eui")) {
-        strcpy(char_ttn_app_eui, lorawan_preferences.getString("app_eui").c_str());
+    if (settings_has_key("app_eui")) {
+        strncpy(char_ttn_app_eui, settings_get_string("app_eui").c_str(),
+                sizeof(char_ttn_app_eui) - 1);
+        char_ttn_app_eui[sizeof(char_ttn_app_eui) - 1] = '\0';
         Serial.println(char_ttn_app_eui);
     } else {
-        strcpy(char_ttn_app_eui, "00000000");
+        strncpy(char_ttn_app_eui, "00000000", sizeof(char_ttn_app_eui) - 1);
+        char_ttn_app_eui[sizeof(char_ttn_app_eui) - 1] = '\0';
     }
 
-    if (lorawan_preferences.isKey("dev_eui")) {
-        strcpy(char_ttn_dev_eui, lorawan_preferences.getString("dev_eui").c_str());
+    if (settings_has_key("dev_eui")) {
+        strncpy(char_ttn_dev_eui, settings_get_string("dev_eui").c_str(),
+                sizeof(char_ttn_dev_eui) - 1);
+        char_ttn_dev_eui[sizeof(char_ttn_dev_eui) - 1] = '\0';
     } else {
-        strcpy(char_ttn_dev_eui, "00000000");
+        strncpy(char_ttn_dev_eui, "00000000", sizeof(char_ttn_dev_eui) - 1);
+        char_ttn_dev_eui[sizeof(char_ttn_dev_eui) - 1] = '\0';
     }
 
-    if (lorawan_preferences.isKey("app_key")) {
-        strcpy(char_ttn_app_key, lorawan_preferences.getString("app_key").c_str());
+    if (settings_has_key("app_key")) {
+        strncpy(char_ttn_app_key, settings_get_string("app_key").c_str(),
+                sizeof(char_ttn_app_key) - 1);
+        char_ttn_app_key[sizeof(char_ttn_app_key) - 1] = '\0';
     } else {
-        strcpy(char_ttn_app_key, "00000000000000000000000000000000");
+        strncpy(char_ttn_app_key,
+                "00000000000000000000000000000000",
+                sizeof(char_ttn_app_key) - 1);
+        char_ttn_app_key[sizeof(char_ttn_app_key) - 1] = '\0';
     }
-    if (lorawan_preferences.isKey("c_air_v")) {
-        strcpy(calibration_air_value_str,
-               lorawan_preferences.getString("c_air_v").c_str());
+    if (settings_has_key("c_air_v")) {
+        strncpy(calibration_air_value_str,
+                settings_get_string("c_air_v").c_str(),
+                sizeof(calibration_air_value_str) - 1);
+        calibration_air_value_str[sizeof(calibration_air_value_str) - 1] =
+            '\0';
     } else {
-        strcpy(calibration_air_value_str, "0");
+        strncpy(calibration_air_value_str, "0",
+                sizeof(calibration_air_value_str) - 1);
+        calibration_air_value_str[sizeof(calibration_air_value_str) - 1] =
+            '\0';
     }
-    if (lorawan_preferences.isKey("c_water_v")) {
-        strcpy(calibration_water_value_str,
-               lorawan_preferences.getString("c_water_v").c_str());
+    if (settings_has_key("c_water_v")) {
+        strncpy(calibration_water_value_str,
+                settings_get_string("c_water_v").c_str(),
+                sizeof(calibration_water_value_str) - 1);
+        calibration_water_value_str[sizeof(calibration_water_value_str) - 1] =
+            '\0';
     } else {
-        strcpy(calibration_water_value_str, "0");
+        strncpy(calibration_water_value_str, "0",
+                sizeof(calibration_water_value_str) - 1);
+        calibration_water_value_str[sizeof(calibration_water_value_str) - 1] =
+            '\0';
     }
-    if (lorawan_preferences.isKey("sleep_hours")) {
-        strcpy(sleep_time_hours_str,
-               lorawan_preferences.getString("sleep_hours").c_str());
+    if (settings_has_key("sleep_hours")) {
+        strncpy(sleep_time_hours_str,
+                settings_get_string("sleep_hours").c_str(),
+                sizeof(sleep_time_hours_str) - 1);
+        sleep_time_hours_str[sizeof(sleep_time_hours_str) - 1] = '\0';
     } else {
-        strcpy(sleep_time_hours_str, "0");
+        strncpy(sleep_time_hours_str, "0", sizeof(sleep_time_hours_str) - 1);
+        sleep_time_hours_str[sizeof(sleep_time_hours_str) - 1] = '\0';
     }
 }
 
@@ -105,16 +132,15 @@ void startWebConf() {
 
 void saveConfigCallback() {
     Serial.println("Should save config");
-    lorawan_preferences.putString("app_eui", ttn_app_eui->getValue());
-    lorawan_preferences.putString("dev_eui", ttn_dev_eui->getValue());
-    lorawan_preferences.putString("app_key", ttn_app_key->getValue());
+    settings_put_string("app_eui", ttn_app_eui->getValue());
+    settings_put_string("dev_eui", ttn_dev_eui->getValue());
+    settings_put_string("app_key", ttn_app_key->getValue());
 
-    lorawan_preferences.putString("c_air_v", calibration_air_value->getValue());
-    lorawan_preferences.putString("c_water_v",
-                                  calibration_water_value->getValue());
-    lorawan_preferences.putString("sleep_hours", sleep_time_hours->getValue());
+    settings_put_string("c_air_v", calibration_air_value->getValue());
+    settings_put_string("c_water_v", calibration_water_value->getValue());
+    settings_put_string("sleep_hours", sleep_time_hours->getValue());
 
-    lorawan_preferences.putBool("ttn_otaa_config", true);
+    settings_put_bool("ttn_otaa_config", true);
     leds[0] = CRGB::Green;
     FastLED.show();
 }

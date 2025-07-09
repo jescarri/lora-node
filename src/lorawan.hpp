@@ -1,16 +1,25 @@
 #ifndef LORAWAN_HPP_
 #define LORAWAN_HPP_
-#define PIN_LMIC_NSS     18
-#define PIN_LMIC_RST     14
-#define PIN_LMIC_DIO0    26
-#define PIN_LMIC_DIO1    33
-#define PIN_LMIC_DIO2    32
-#define MAX_PAYLOAD_SIZE 51
-#define MAX_SENSOR_READ  1
 
-#define SOIL_SENSOR_PIN 34        // ADC1_CH6
-const int AirValue   = 2200;
-const int WaterValue = 380;
+#include "config.hpp"
+
+// Re-export selected configuration constants so that existing code that still
+// uses the former identifiers keeps compiling.  New code should prefer the
+// names in the `config` namespace directly.
+
+constexpr int MAX_PAYLOAD_SIZE = config::MaxPayloadSize;
+constexpr int MAX_SENSOR_READ  = config::MaxSensorRead;
+
+#define SOIL_SENSOR_PIN config::SoilSensorPin
+
+// Keep compatibility symbols for legacy code.  These are intentionally *not*
+// placed inside a namespace so that they behave 1:1 like the previous
+// pre-processor macros.
+#define PIN_LMIC_NSS  config::PinLmicNss
+#define PIN_LMIC_RST  config::PinLmicRst
+#define PIN_LMIC_DIO0 config::PinLmicDio0
+#define PIN_LMIC_DIO1 config::PinLmicDio1
+#define PIN_LMIC_DIO2 config::PinLmicDio2
 #include <Arduino.h>
 #include <lmic.h>
 

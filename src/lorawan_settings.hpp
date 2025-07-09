@@ -1,7 +1,6 @@
 #ifndef LORAWAN_SETTINGS_HPP_
 #define LORAWAN_SETTINGS_HPP_
 #include <FastLED.h>
-#include <Preferences.h>
 #include <lmic.h>
 
 #include <hal/hal.h>
@@ -18,7 +17,6 @@
 #define RO_MODE true
 
 extern lmic_t SETTINGS_LMIC;
-extern Preferences lorawan_preferences;
 extern lmic_t LMIC;
 extern CRGB leds[1];
 
@@ -33,4 +31,11 @@ bool lorawanConfigPresent();
 int get_calibration_air_value();
 int get_calibration_water_value();
 int get_sleep_time_seconds();
+
+// Generic preference helpers – hide direct dependency on Arduino Preferences
+bool settings_has_key(const char *key);
+String settings_get_string(const char *key, const char *default_value = "");
+void settings_put_string(const char *key, const char *value);
+bool settings_get_bool(const char *key, bool default_value = false);
+void settings_put_bool(const char *key, bool value);
 #endif

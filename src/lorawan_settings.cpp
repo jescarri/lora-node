@@ -1,5 +1,15 @@
 #include "lorawan_settings.hpp"
 #include "lorawan.hpp"
+#include <Preferences.h>
+
+/*
+ * Keep the Arduino Preferences instance private to this translation unit so
+ * that the rest of the code base no longer depends on <Preferences.h> nor on
+ * the concrete Preferences type.  Access to the NVS storage is provided via
+ * the small Settings helper functions defined below.
+ */
+
+static Preferences lorawan_preferences;
 
 void lorawan_preferences_init() {
     lorawan_preferences.begin(LMIC_PREF_NS_NAME, RW_MODE);
@@ -71,4 +81,35 @@ int get_sleep_time_seconds() {
         }
     }
     return 3600;
+}
+
+// ---------------------------------------------------------------------------
+//  Generic helper layer – hides the concrete Preferences implementation from
+//  the rest of the code base.
+// ---------------------------------------------------------------------------
+
+bool settings_has_key(const char *key) {
+    return lorawan_preferences.isKey(key);
+}
+
+String settings_get_string(const char *key, const char *default_value) {
+    if (lorawan_preferences.isKey(key)) {
+        return lorawan_preferences.getString(key);
+    }
+    return String(default_value);
+}
+
+void settings_put_string(const char *key, const char *value) {
+    lorawan_preferences.putString(key, value);
+}
+
+bool settings_get_bool(const char *key, bool default_value) {
+    if (lorawan_preferences.isKey(key)) {
+        return lorawan_preferences.getBool(key);
+    }
+    return default_value;
+}
+
+void settings_put_bool(const char *key, bool value) {
+    lorawan_preferences.putBool(key, value);
 }

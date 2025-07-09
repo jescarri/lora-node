@@ -1,7 +1,7 @@
 #include "WiFi.h"
 #include "driver/adc.h"
 
-#include <Preferences.h>
+
 #include <lmic.h>
 
 #include "esp_bt.h"
@@ -22,7 +22,6 @@
 #define uS_TO_S_FACTOR       1000000ULL
 
 lmic_t SETTINGS_LMIC;
-Preferences lorawan_preferences;
 CayenneLPP lpp(MAX_PAYLOAD_SIZE);
 Adafruit_MAX17048 maxlipo;
 CRGB leds[NUM_LEDS];
@@ -114,7 +113,7 @@ void setup() {
     startWebConfig = !digitalRead(START_WEB_CONFIG_PIN);
     Serial.print("Webconf status: ");
     Serial.println(startWebConfig);
-    bool otaa_cfg = lorawan_preferences.isKey("ttn_otaa_config");
+    bool otaa_cfg = settings_has_key("ttn_otaa_config");
     Serial.print("otaa_config_done: ");
     Serial.println(otaa_cfg);
     Serial.print("Sleeping for: ");

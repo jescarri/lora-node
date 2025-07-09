@@ -264,23 +264,38 @@ void do_send(osjob_t *j) {
 void os_getArtEui(u1_t *buf) {
     char char_app_eui[MAX_LORAWAN_CONF_CHAR_LEN];
     safe_strncpy(char_app_eui, settings_get_string("app_eui").c_str());
-    u1_t app_eui[8];
-    int c = 0;
-    for (int i = 0; i < 16; i += 2) {
-        char t[3];
-        t[0]       = char_app_eui[i];
-        t[1]       = char_app_eui[i + 1];
-        t[2]       = 0;
-        app_eui[c] = strtoul(t, NULL, 16);
-        c++;
+
+    // Validate length
+    if (strlen(char_app_eui) < 16) {
+        Serial.println("ERROR: app_eui string too short");
+        memset(buf, 0, 8);        // Or some safe fallback
+        return;
     }
+
+    u1_t app_eui[8];
+    for (int c = 0, i = 0; i < 16; i += 2, c++) {
+        char t[3];
+        t[0] = char_app_eui[i];
+        t[1] = char_app_eui[i + 1];
+        t[2] = '\0';
+
+        if (!isxdigit(t[0]) || !isxdigit(t[1])) {
+            Serial.println("ERROR: app_eui contains non-hex digits");
+            memset(buf, 0, 8);
+            return;
+        }
+
+        app_eui[c] = (u1_t)strtoul(t, NULL, 16);
+    }
+
     Serial.print("app_eui: ");
     for (int i = 0; i < 8; i++) {
         Serial.print(app_eui[i], HEX);
     }
-    Serial.println("");
+    Serial.println();
     memcpy_P(buf, app_eui, 8);
 }
+
 void os_getDevEui(u1_t *buf) {
     char char_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
     safe_strncpy(char_dev_eui, settings_get_string("dev_eui").c_str());

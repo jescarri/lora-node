@@ -1,6 +1,7 @@
 #include "lorawan_settings.hpp"
 #include "lorawan.hpp"
 #include <Preferences.h>
+#include <string>
 
 /*
  * Keep the Arduino Preferences instance private to this translation unit so
@@ -38,9 +39,9 @@ void lmic_save() {
 void load_lmic() {
     Serial.println("Start of Load LMIC");
     size_t schlen = prefs().getBytesLength(LMIC_BYTES_KEY_NAME);
-    char buffer[schlen];
-    prefs().getBytes(LMIC_BYTES_KEY_NAME, buffer, schlen);
-    lmic_t *tmp = (lmic_t *)buffer;
+    std::string buf(schlen, '\0');
+    prefs().getBytes(LMIC_BYTES_KEY_NAME, buf.data(), schlen);
+    lmic_t *tmp = reinterpret_cast<lmic_t *>(buf.data());
     LMIC        = *tmp;
     LoraWANDebug(LMIC);
     Serial.println("END of LoadLmic");

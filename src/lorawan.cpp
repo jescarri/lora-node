@@ -265,8 +265,8 @@ void do_send(osjob_t *j) {
 void os_getArtEui(u1_t *buf) {
     const String cfg = settings_get_string("app_eui");
 
-    if (cfg.length() < 16) {
-        Serial.println("ERROR: app_eui string too short");
+    if (cfg.isEmpty() || cfg.length() < 16) {
+        Serial.println("ERROR: app_eui string missing or too short");
         memset(buf, 0, 8);
         return;
     }
@@ -274,14 +274,13 @@ void os_getArtEui(u1_t *buf) {
     u1_t app_eui[8];
 
     for (int c = 0, i = 0; c < 8; ++c, i += 2) {
-        char t[3] = { cfg[i], cfg[i + 1], '\0' };
-
-        if (!isxdigit(t[0]) || !isxdigit(t[1])) {
+        if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
             Serial.println("ERROR: app_eui contains non-hex digits");
             memset(buf, 0, 8);
             return;
         }
 
+        char t[3]  = {cfg[i], cfg[i + 1], '\0'};
         app_eui[c] = static_cast<u1_t>(strtoul(t, nullptr, 16));
     }
 
@@ -295,49 +294,59 @@ void os_getArtEui(u1_t *buf) {
 }
 
 void os_getDevEui(u1_t *buf) {
-    char char_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-    safe_strncpy(char_dev_eui, settings_get_string("dev_eui").c_str());
-    u1_t dev_eui[8];
-    int c = 0;
-    for (int i = 0; i < 16; i += 2) {
-        char t[3];
-        t[0]       = char_dev_eui[i];
-        t[1]       = char_dev_eui[i + 1];
-        t[2]       = 0;
-        dev_eui[c] = static_cast<u1_t>(strtoul(t, nullptr, 16));
-        c++;
+    const String cfg = settings_get_string("dev_eui");
+
+    if (cfg.isEmpty() || cfg.length() < 16) {
+        Serial.println("ERROR: dev_eui string missing or too short");
+        memset(buf, 0, 8);
+        return;
     }
+
+    u1_t dev_eui[8];
+
+    for (int c = 0, i = 0; c < 8; ++c, i += 2) {
+        if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
+            Serial.println("ERROR: dev_eui contains non-hex digits");
+            memset(buf, 0, 8);
+            return;
+        }
+
+        String t   = cfg.substring(i, i + 2);
+        dev_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
+    }
+
     Serial.print("dev_eui: ");
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; ++i) {
         Serial.print(dev_eui[i], HEX);
     }
-    Serial.println("");
+    Serial.println();
 
     memcpy_P(buf, dev_eui, 8);
 }
+
 void os_getDevKey(u1_t *buf) {
     const String cfg = settings_get_string("app_key");
 
     // Validate the expected length (32 hex chars → 16 bytes)
-    if (cfg.length() < 32) {
-        Serial.println("ERROR: app_key string too short");
+    if (cfg.isEmpty() || cfg.length() < 32) {
+        Serial.println("ERROR: app_key string missing or too short");
         memset(buf, 0, 16);
         return;
     }
 
     u1_t app_key[16];
 
-    int c = 0;
-    for (int i = 0; i < 32; i += 2, ++c) {
-        char t[3] = { cfg[i], cfg[i + 1], '\0' };
+    for (int c = 0, i = 0; c < 16; ++c, i += 2) {
+        // Extract two hex digits as a String
+        String twoChars = cfg.substring(i, i + 2);
 
-        if (!isxdigit(t[0]) || !isxdigit(t[1])) {
+        if (!isxdigit(twoChars[0]) || !isxdigit(twoChars[1])) {
             Serial.println("ERROR: app_key contains non-hex digits");
             memset(buf, 0, 16);
             return;
         }
 
-        app_key[c] = static_cast<u1_t>(strtoul(t, nullptr, 16));
+        app_key[c] = static_cast<u1_t>(strtoul(twoChars.c_str(), nullptr, 16));
     }
 
     Serial.print("app_key: ");

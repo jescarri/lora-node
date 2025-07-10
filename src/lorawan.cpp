@@ -285,8 +285,8 @@ void os_getArtEui(u1_t *buf) {
     }
 
     Serial.print("app_eui: ");
-    for (int i = 0; i < 8; ++i) {
-        Serial.print(app_eui[i], HEX);
+    for (u1_t b : app_eui) {
+        Serial.print(b, HEX);
     }
     Serial.println();
 
@@ -316,8 +316,8 @@ void os_getDevEui(u1_t *buf) {
     }
 
     Serial.print("dev_eui: ");
-    for (int i = 0; i < 8; ++i) {
-        Serial.print(dev_eui[i], HEX);
+    for (u1_t b : dev_eui) {
+        Serial.print(b, HEX);
     }
     Serial.println();
 
@@ -350,8 +350,8 @@ void os_getDevKey(u1_t *buf) {
     }
 
     Serial.print("app_key: ");
-    for (int i = 0; i < 16; ++i) {
-        Serial.print(app_key[i], HEX);
+    for (u1_t b : app_key) {
+        Serial.print(b, HEX);
     }
     Serial.println();
 

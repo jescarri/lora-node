@@ -3,12 +3,13 @@
 
 struct CRGB {
     uint8_t r{0}, g{0}, b{0};
-    CRGB() = default;
-    CRGB(uint8_t r_, uint8_t g_, uint8_t b_) : r(r_), g(g_), b(b_) {}
+    constexpr CRGB() = default;
+    constexpr CRGB(uint8_t r_, uint8_t g_, uint8_t b_) : r(r_), g(g_), b(b_) {}
     // Common named colours used in the production code.
     static const CRGB Red;
     static const CRGB Green;
     static const CRGB Black;
+    static const CRGB DarkOrange;
 };
 
 // ---------------------------------------------------------------------------
@@ -37,3 +38,4 @@ inline CRGB leds[1];
 inline const CRGB CRGB::Red{255, 0, 0};
 inline const CRGB CRGB::Green{0, 255, 0};
 inline const CRGB CRGB::Black{0, 0, 0};
+inline constexpr CRGB CRGB::DarkOrange{255, 140, 0};

@@ -16,13 +16,10 @@ void test_empty_source() {
     TEST_ASSERT_EQUAL_CHAR('x', dest[1]);
 }
 
-void setUp() {}
-void tearDown() {}
-
-int main(int, char **) {
-    UNITY_BEGIN();
-    RUN_TEST(test_dest_size_one);
-    RUN_TEST(test_empty_source);
-    return UNITY_END();
-}
-
+// setUp and tearDown as well as the Unity test runner `main` are
+// provided by another translation unit in this test suite
+// (see `test_safe_strncpy.cpp`). Defining them here as well would result
+// in multiple-definition linker errors when PlatformIO links all source
+// files in the `test_utils` suite into a single executable. Therefore we
+// only declare the test cases in this file – the shared runner will pick
+// them up automatically via `RUN_TEST()` calls added there.

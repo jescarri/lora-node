@@ -78,6 +78,13 @@ void test_buffer_integrity() {
 }
 
 // ---------------------------------------------------------------------------
+//  Forward declarations of tests located in other translation units
+// ---------------------------------------------------------------------------
+
+void test_dest_size_one();
+void test_empty_source();
+
+// ---------------------------------------------------------------------------
 //  Unity test runner
 // ---------------------------------------------------------------------------
 
@@ -90,6 +97,8 @@ int main(int argc, char **argv) {
     RUN_TEST(test_exact_fit);
     RUN_TEST(test_truncation);
     RUN_TEST(test_buffer_integrity);
+    // Tests defined in test_safe_strncpy_bounds.cpp
+    RUN_TEST(test_dest_size_one);
+    RUN_TEST(test_empty_source);
     return UNITY_END();
 }
-

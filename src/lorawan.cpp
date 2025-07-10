@@ -105,7 +105,7 @@ void LoraWANDebug(lmic_t lmic_check) {
     Serial.println("");
     Serial.println("");
 }
-#endif // !UNIT_TEST
+#endif        // !UNIT_TEST
 
 void PrintLMICVersion() {
     Serial.print(F("LMIC: "));
@@ -283,13 +283,13 @@ void os_getArtEui(u1_t *buf) {
             return;
         }
 
-        char t[3]  = {cfg[i], cfg[i + 1], '\0'};
-        app_eui[c] = static_cast<u1_t>(strtoul(t, nullptr, 16));
+        String t   = cfg.substring(i, i + 2);
+        app_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
 
     Serial.print("app_eui: ");
-    for (u1_t b : app_eui) {
-        Serial.print(b, HEX);
+    for (int i = 0; i < 8; ++i) {
+        Serial.print(app_eui[i], HEX);
     }
     Serial.println();
 

@@ -288,8 +288,8 @@ void os_getArtEui(u1_t *buf) {
     }
 
     Serial.print("app_eui: ");
-    for (int i = 0; i < 8; ++i) {
-        Serial.print(app_eui[i], HEX);
+    for (auto val : app_eui) {
+        Serial.print(val, HEX);
     }
     Serial.println();
 

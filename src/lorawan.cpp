@@ -1,3 +1,4 @@
+#define LORAWAN_CPP_IMPLEMENTATION
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
 #include "utils.hpp"
@@ -63,6 +64,7 @@ void LoraWANPrintLMICOpmode(void) {
     }
 }
 
+#if !defined(UNIT_TEST)
 void LoraWANDebug(lmic_t lmic_check) {
     LoraWANPrintLMICOpmode();
     Serial.println("");
@@ -103,6 +105,7 @@ void LoraWANDebug(lmic_t lmic_check) {
     Serial.println("");
     Serial.println("");
 }
+#endif // !UNIT_TEST
 
 void PrintLMICVersion() {
     Serial.print(F("LMIC: "));

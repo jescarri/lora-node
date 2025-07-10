@@ -5,7 +5,7 @@ public:
     void reset() {}
     uint8_t getSize() const { return 0; }
 
-    // Add no-op sensor encoding helpers used by production code.
+    // No-op sensor encoding helpers used by the production code.
     template <typename... Args>
     void addGenericSensor(Args...) {}
 
@@ -21,5 +21,5 @@ public:
     uint8_t *getBuffer() { return nullptr; }
 };
 
-// Global instance expected by lorawan.cpp (declared extern in header).
+// Global instance expected by lorawan.cpp (declared `extern` in its header).
 inline CayenneLPP lpp;

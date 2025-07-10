@@ -13,3 +13,7 @@ program:
 
 uploadfs:
 	platformio -f -c vim run --target uploadfs
+
+.PHONY: test
+test:
+	platformio test -e native

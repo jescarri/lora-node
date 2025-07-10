@@ -1,7 +1,7 @@
 #include "WiFi.h"
 #include "driver/adc.h"
 
-#include <Preferences.h>
+
 #include <lmic.h>
 
 #include "esp_bt.h"
@@ -10,6 +10,7 @@
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
 #include "menu.hpp"
+#include <array>
 #include <Adafruit_MAX1704X.h>
 #include <FastLED.h>
 #include <Wire.h>
@@ -22,7 +23,6 @@
 #define uS_TO_S_FACTOR       1000000ULL
 
 lmic_t SETTINGS_LMIC;
-Preferences lorawan_preferences;
 CayenneLPP lpp(MAX_PAYLOAD_SIZE);
 Adafruit_MAX17048 maxlipo;
 CRGB leds[NUM_LEDS];
@@ -49,22 +49,22 @@ const lmic_pinmap lmic_pins = {
     .spi_freq       = 8000000,
 };
 
-static const gpio_num_t AUX_PINS[] = {
+static constexpr std::array<gpio_num_t, 12> AUX_PINS = {
     /* LoRa radio (SX127x) */
-    GPIO_NUM_5,         // SS  (leave even if NC – harmless)
-    GPIO_NUM_18,        // SCK / NSS
-    GPIO_NUM_19,        // MISO
-    GPIO_NUM_23,        // MOSI
+    GPIO_NUM_5,   // SS  (leave even if NC – harmless)
+    GPIO_NUM_18,  // SCK / NSS
+    GPIO_NUM_19,  // MISO
+    GPIO_NUM_23,  // MOSI
 
-    GPIO_NUM_14,        // RESET
-    GPIO_NUM_26,        // DIO0
+    GPIO_NUM_14,  // RESET
+    GPIO_NUM_26,  // DIO0
     GPIO_NUM_27,
-    GPIO_NUM_33,        // DIO1
-    GPIO_NUM_32,        // DIO2
+    GPIO_NUM_33,  // DIO1
+    GPIO_NUM_32,  // DIO2
     /* I²C battery gauge */
-    GPIO_NUM_21,        // SDA
-    GPIO_NUM_22,        // SCL
-    GPIO_NUM_4          // MAX17048 ALRT
+    GPIO_NUM_21,  // SDA
+    GPIO_NUM_22,  // SCL
+    GPIO_NUM_4    // MAX17048 ALRT
 };
 
 // Schedule TX every this many seconds
@@ -114,7 +114,7 @@ void setup() {
     startWebConfig = !digitalRead(START_WEB_CONFIG_PIN);
     Serial.print("Webconf status: ");
     Serial.println(startWebConfig);
-    bool otaa_cfg = lorawan_preferences.isKey("ttn_otaa_config");
+    bool otaa_cfg = settings_has_key("ttn_otaa_config");
     Serial.print("otaa_config_done: ");
     Serial.println(otaa_cfg);
     Serial.print("Sleeping for: ");

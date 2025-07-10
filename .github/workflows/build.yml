@@ -20,7 +20,7 @@ jobs:
             ~/.platformio/.cache
           key: ${{ runner.os }}-pio
       - name: install gcovr 5.0
-        run: pip install gcovr==5.0
+        run: pip install gcovr==7.2
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
@@ -36,6 +36,24 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
       - name: Generate Compilation DB
         run: pio run -t compiledb
+
+      # ---------------------------------------------------------------
+      #  Run native unit tests with coverage instrumentation enabled
+      #  and generate a Cobertura XML report that will be picked up by
+      #  SonarQube in the next step.
+      # ---------------------------------------------------------------
+
+      - name: Run unit tests (native env)
+        run: make test
+
+      - name: Generate coverage report (gcovr)
+        run: |
+          gcovr \
+            --root . \
+            --exclude '\.pio/libdeps/' \
+            --sonarqube \
+            --exclude 'tests/.*' \
+            --output coverage.xml
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
@@ -43,3 +61,4 @@ jobs:
         with:
           args: >
             --define sonar.cfamily.compile-commands="compile_commands.json"
+            --define sonar.coverageReportPaths="coverage.xml"

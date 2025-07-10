@@ -1,4 +1,9 @@
+#define LORAWAN_CPP_IMPLEMENTATION
 #include "lorawan.hpp"
+#include "lorawan_settings.hpp"
+#include "utils.hpp"
+#include <cstring>
+#include <cctype>
 #include "lorawan_settings.hpp"
 #include <Adafruit_MAX1704X.h>
 
@@ -59,6 +64,7 @@ void LoraWANPrintLMICOpmode(void) {
     }
 }
 
+#if !defined(UNIT_TEST)
 void LoraWANDebug(lmic_t lmic_check) {
     LoraWANPrintLMICOpmode();
     Serial.println("");
@@ -99,6 +105,7 @@ void LoraWANDebug(lmic_t lmic_check) {
     Serial.println("");
     Serial.println("");
 }
+#endif        // !UNIT_TEST
 
 void PrintLMICVersion() {
     Serial.print(F("LMIC: "));
@@ -259,69 +266,98 @@ void do_send(osjob_t *j) {
 
 // ToDo: Refactor hex string to u1_t array conversion
 void os_getArtEui(u1_t *buf) {
-    char char_app_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-    strcpy(char_app_eui, lorawan_preferences.getString("app_eui").c_str());
+    const String cfg = settings_get_string("app_eui");
+
+    if (cfg.isEmpty() || cfg.length() < 16) {
+        Serial.println("ERROR: app_eui string missing or too short");
+        memset(buf, 0, 8);
+        return;
+    }
+
     u1_t app_eui[8];
-    int c = 0;
-    for (int i = 0; i < 16; i += 2) {
-        char t[3];
-        t[0]       = char_app_eui[i];
-        t[1]       = char_app_eui[i + 1];
-        t[2]       = 0;
-        app_eui[c] = strtoul(t, NULL, 16);
-        c++;
+
+    for (int c = 0, i = 0; c < 8; ++c, i += 2) {
+        if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
+            Serial.println("ERROR: app_eui contains non-hex digits");
+            memset(buf, 0, 8);
+            return;
+        }
+
+        String t   = cfg.substring(i, i + 2);
+        app_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
+
     Serial.print("app_eui: ");
-    for (int i = 0; i < 8; i++) {
-        Serial.print(app_eui[i], HEX);
+    for (auto val : app_eui) {
+        Serial.print(val, HEX);
     }
-    Serial.println("");
+    Serial.println();
+
     memcpy_P(buf, app_eui, 8);
 }
+
 void os_getDevEui(u1_t *buf) {
-    char char_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-    strcpy(char_dev_eui, lorawan_preferences.getString("dev_eui").c_str());
+    const String cfg = settings_get_string("dev_eui");
+
+    if (cfg.isEmpty() || cfg.length() < 16) {
+        Serial.println("ERROR: dev_eui string missing or too short");
+        memset(buf, 0, 8);
+        return;
+    }
+
     u1_t dev_eui[8];
-    int c = 0;
-    for (int i = 0; i < 16; i += 2) {
-        char t[3];
-        t[0]       = char_dev_eui[i];
-        t[1]       = char_dev_eui[i + 1];
-        t[2]       = 0;
-        dev_eui[c] = strtoul(t, NULL, 16);
-        c++;
+
+    for (int c = 0, i = 0; c < 8; ++c, i += 2) {
+        if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
+            Serial.println("ERROR: dev_eui contains non-hex digits");
+            memset(buf, 0, 8);
+            return;
+        }
+
+        String t   = cfg.substring(i, i + 2);
+        dev_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
+
     Serial.print("dev_eui: ");
-    for (int i = 0; i < 8; i++) {
-        Serial.print(dev_eui[i], HEX);
+    for (u1_t b : dev_eui) {
+        Serial.print(b, HEX);
     }
-    Serial.println("");
+    Serial.println();
 
     memcpy_P(buf, dev_eui, 8);
 }
+
 void os_getDevKey(u1_t *buf) {
-    char char_app_key[MAX_LORAWAN_CONF_CHAR_LEN];
-    strcpy(char_app_key, lorawan_preferences.getString("app_key").c_str());
+    const String cfg = settings_get_string("app_key");
+
+    // Validate the expected length (32 hex chars → 16 bytes)
+    if (cfg.isEmpty() || cfg.length() < 32) {
+        Serial.println("ERROR: app_key string missing or too short");
+        memset(buf, 0, 16);
+        return;
+    }
+
     u1_t app_key[16];
-    Serial.print("Read Data: ");
-    Serial.println(char_app_key);
-    int c = 0;
-    for (int i = 0; i < 32; i += 2) {
-        char t[3];
-        t[0] = char_app_key[i];
-        t[1] = char_app_key[i + 1];
-        t[2] = 0;
-        Serial.print(t);
-        app_key[c] = strtoul(t, NULL, 16);
-        c++;
+
+    for (int c = 0, i = 0; c < 16; ++c, i += 2) {
+        // Extract two hex digits as a String
+        String twoChars = cfg.substring(i, i + 2);
+
+        if (!isxdigit(twoChars[0]) || !isxdigit(twoChars[1])) {
+            Serial.println("ERROR: app_key contains non-hex digits");
+            memset(buf, 0, 16);
+            return;
+        }
+
+        app_key[c] = static_cast<u1_t>(strtoul(twoChars.c_str(), nullptr, 16));
     }
-    Serial.println("");
-    Serial.print("C Counter: ");
-    Serial.println(c);
-    for (int i = 0; i < 16; i++) {
-        Serial.print(app_key[i], HEX);
+
+    Serial.print("app_key: ");
+    for (u1_t b : app_key) {
+        Serial.print(b, HEX);
     }
-    Serial.println("");
+    Serial.println();
+
     memcpy_P(buf, app_key, 16);
 }
 

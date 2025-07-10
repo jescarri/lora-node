@@ -52,6 +52,7 @@ jobs:
             --root . \
             --exclude '\.pio/libdeps/' \
             --sonarqube \
+            --exclude 'tests/.*' \
             --output coverage.xml
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5

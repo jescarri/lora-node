@@ -25,3 +25,8 @@ struct {
 #define LOW  0
 
 using byte = uint8_t;
+
+// Bring in additional stubs that many source files expect after the generic
+// Arduino header.
+#include "WiFi.h"
+#include "esp_system.h"

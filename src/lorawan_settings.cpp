@@ -2,6 +2,7 @@
 #include "lorawan.hpp"
 #include <Preferences.h>
 #include <vector>
+#include <cstring>
 
 /*
  * Keep the Arduino Preferences instance private to this translation unit so

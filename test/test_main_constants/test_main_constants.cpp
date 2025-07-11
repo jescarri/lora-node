@@ -16,12 +16,12 @@ static std::string load_source_file(const std::string &path) {
     return oss.str();
 }
 
-// Extract the integer literal that appears after an '=' in a `#define` line.
-static int extract_define_value(const std::string &source, const std::string &name) {
-    auto pos = source.find("#define " + name);
-    TEST_ASSERT_TRUE_MESSAGE(pos != std::string::npos, ("Missing #define for " + name).c_str());
+// Extract the integer literal that appears after an '=' in a `constexpr` line.
+static int extract_constexpr_value(const std::string &source, const std::string &name) {
+    auto pos = source.find("constexpr int " + name);
+    TEST_ASSERT_TRUE_MESSAGE(pos != std::string::npos, ("Missing constexpr for " + name).c_str());
 
-    // Move past the define and any whitespace up to the value.
+    // Move past the constexpr declaration and any whitespace up to the value.
     pos = source.find_first_of("0123456789", pos);
     TEST_ASSERT_NOT_EQUAL(-1, static_cast<int>(pos));
 
@@ -46,10 +46,10 @@ void test_constants_are_as_expected() {
     // Validate a handful of critical compile-time constants.  The concrete
     // numbers encode hardware layout or timing behaviour and should therefore
     // remain stable.
-    TEST_ASSERT_EQUAL_INT_MESSAGE(13, extract_define_value(src, "VCC_ENA_PIN"), "VCC_ENA_PIN changed – verify hardware wiring");
-    TEST_ASSERT_EQUAL_INT_MESSAGE(16, extract_define_value(src, "START_WEB_CONFIG_PIN"), "START_WEB_CONFIG_PIN changed – update schematic");
-    TEST_ASSERT_EQUAL_INT_MESSAGE(1, extract_define_value(src, "NUM_LEDS"), "NUM_LEDS changed – revisit power budget and animations");
-    TEST_ASSERT_EQUAL_INT_MESSAGE(17, extract_define_value(src, "LED_DATA_PIN"), "LED_DATA_PIN changed – verify PCB routing");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(13, extract_constexpr_value(src, "VCC_ENA_PIN"), "VCC_ENA_PIN changed – verify hardware wiring");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(16, extract_constexpr_value(src, "START_WEB_CONFIG_PIN"), "START_WEB_CONFIG_PIN changed – update schematic");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(1, extract_constexpr_value(src, "NUM_LEDS"), "NUM_LEDS changed – revisit power budget and animations");
+    TEST_ASSERT_EQUAL_INT_MESSAGE(17, extract_constexpr_value(src, "LED_DATA_PIN"), "LED_DATA_PIN changed – verify PCB routing");
 
     // TX_INTERVAL is declared as a `const unsigned` rather than a macro – we
     // locate it textually as well for simplicity.

@@ -65,7 +65,7 @@ void LoraWANPrintLMICOpmode(void) {
 }
 
 #if !defined(UNIT_TEST)
-void LoraWANDebug(lmic_t lmic_check) {
+void LoraWANDebug(const lmic_t& lmic_check) {
     LoraWANPrintLMICOpmode();
     Serial.println("");
     Serial.println("-----");
@@ -179,18 +179,13 @@ void onEvent(ev_t ev) {
         case EV_TXCOMPLETE:
             // Transmit completed, includes waiting for RX windows.
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
-            // setTxIndicatorsOn(false);
-            // printEvent(timestamp, ev);
-            // printFrameCounters();
             // Check if downlink was received
             if (LMIC.dataLen != 0 || LMIC.dataBeg != 0) {
-                uint8_t fPort = 0;
-                if (LMIC.txrxFlags & TXRX_PORT) {
-                    fPort = LMIC.frame[LMIC.dataBeg - 1];
-                }
-                // printDownlinkInfo();
-                // processDownlink(timestamp, fPort, LMIC.frame + LMIC.dataBeg,
-                // LMIC.dataLen);
+                // Downlink data received, could be processed here
+                // uint8_t fPort = 0;
+                // if (LMIC.txrxFlags & TXRX_PORT) {
+                //     fPort = LMIC.frame[LMIC.dataBeg - 1];
+                // }
             }
             enableSleep_ = true;
             break;
@@ -237,19 +232,19 @@ void onEvent(ev_t ev) {
     }
 }
 
-void do_send(osjob_t *j) {
+void do_send(osjob_t* /* j */) {
     lpp.reset();
     ReadSensors();
-    lpp.addGenericSensor(0, sd.soilMoistureValue);
+    lpp.addGenericSensor(0, static_cast<float>(sd.soilMoistureValue));
     lpp.addVoltage(1, sd.vBat);
     lpp.addPercentage(2, sd.soilMoisturePercentage);
     lpp.addSwitch(3, sd.lipoGaugeOk);
     lpp.addPercentage(4, sd.batPercent);
     lpp.addPercentage(5, sd.batRate);
-    lpp.addGenericSensor(6, get_calibration_air_value());
-    lpp.addGenericSensor(7, get_calibration_water_value());
-    lpp.addGenericSensor(8, get_sleep_time_seconds());
-    lpp.addGenericSensor(9, get_previous_runtime());
+    lpp.addGenericSensor(6, static_cast<float>(get_calibration_air_value()));
+    lpp.addGenericSensor(7, static_cast<float>(get_calibration_water_value()));
+    lpp.addGenericSensor(8, static_cast<float>(get_sleep_time_seconds()));
+    lpp.addGenericSensor(9, static_cast<float>(get_previous_runtime()));
 
     // Check if there is not a current TX/RX job running
     Serial.println("do_send");
@@ -362,8 +357,8 @@ void os_getDevKey(u1_t *buf) {
 }
 
 void ReadSensors() {
-    sd.soilMoisturePercentage = 0;
-    sd.soilMoistureValue      = 0;
+    sd.soilMoisturePercentage = 0.0f;
+    sd.soilMoistureValue      = 0.0f;
     sd.lipoGaugeOk            = maxLipoFound;
     if (maxLipoFound == true) {
         sd.vBat       = maxlipo.cellVoltage();
@@ -373,14 +368,15 @@ void ReadSensors() {
         Serial.println(sd.batRate);
     }
     for (int i = 0; i < MAX_SENSOR_READ; i++) {
-        float a = analogRead(SOIL_SENSOR_PIN);
+        float a = static_cast<float>(analogRead(SOIL_SENSOR_PIN));
         sd.soilMoistureValue += a;
         delay(10);
     }
-    float t                   = sd.soilMoistureValue / MAX_SENSOR_READ;
+    float t                   = sd.soilMoistureValue / static_cast<float>(MAX_SENSOR_READ);
     sd.soilMoistureValue      = t;
-    float x                   = map(sd.soilMoistureValue, get_calibration_air_value(),
-                                    get_calibration_water_value(), 0, 100);
+    float x                   = static_cast<float>(map(static_cast<long>(sd.soilMoistureValue), 
+                                                       get_calibration_air_value(),
+                                                       get_calibration_water_value(), 0, 100));
     sd.soilMoisturePercentage = abs(x);
     Serial.printf("X: %f", x);
     Serial.println("");

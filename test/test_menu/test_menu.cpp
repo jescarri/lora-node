@@ -10,6 +10,15 @@
 #include "../../src/lorawan_settings.cpp"
 #include "../../src/menu.cpp"
 
+#ifdef UNIT_TEST
+#include "../../test/stubs/esp32_gpio.h"
+#include "../../test/stubs/lmic.h"
+lmic_t LMIC{};
+CRGB leds[1];
+volatile bool enableSleep_ = true;
+bool maxLipoFound = false;
+#endif
+
 // Extern declarations of the internal buffers defined in menu.cpp so that we
 // can validate their contents after calling the public functions under test.
 
@@ -69,6 +78,16 @@ void test_load_settings_existing_values() {
     TEST_ASSERT_EQUAL_STRING("8", sleep_time_hours_str);
 }
 
+void test_load_settings_buffer_overflow() {
+    clear_preferences();
+    // Simulate overly long input
+    std::string long_val(2 * MAX_LORAWAN_CONF_CHAR_LEN, 'A');
+    settings_put_string("app_eui", long_val.c_str());
+    loadSetings();
+    // Buffer should be null-terminated and not overflow
+    TEST_ASSERT_EQUAL_CHAR('\0', char_ttn_app_eui[MAX_LORAWAN_CONF_CHAR_LEN - 1]);
+}
+
 // ---------------------------------------------------------------------------
 //  Unity runner
 // ---------------------------------------------------------------------------
@@ -80,5 +99,6 @@ int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_load_settings_defaults);
     RUN_TEST(test_load_settings_existing_values);
+    RUN_TEST(test_load_settings_buffer_overflow);
     return UNITY_END();
 }

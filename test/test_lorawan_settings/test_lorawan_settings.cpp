@@ -6,6 +6,12 @@
 #include "Preferences.h"
 #include <cstring>
 
+#ifdef UNIT_TEST
+#include "../../test/stubs/esp32_gpio.h"
+#include "../../test/stubs/lmic.h"
+lmic_t LMIC{};
+#endif
+
 #include "lorawan_settings.hpp"
 
 // Bring in the implementation so that the functions under test are linked
@@ -57,6 +63,11 @@ void test_bool_roundtrip() {
 
     settings_put_bool(key, false);
     TEST_ASSERT_FALSE(settings_get_bool(key, true));
+}
+
+void test_bool_default() {
+    const char *key = "nonexistent_bool";
+    TEST_ASSERT_FALSE(settings_get_bool(key, false));
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +124,7 @@ int main(int, char **) {
     RUN_TEST(test_string_roundtrip);
     RUN_TEST(test_string_default);
     RUN_TEST(test_bool_roundtrip);
+    RUN_TEST(test_bool_default);
 
     RUN_TEST(test_sleep_time_default);
     RUN_TEST(test_sleep_time_custom);

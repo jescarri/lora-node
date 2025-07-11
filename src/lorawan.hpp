@@ -1,6 +1,13 @@
 #ifndef LORAWAN_HPP_
 #define LORAWAN_HPP_
 
+#include <Arduino.h>
+#include <lmic.h>
+#include <Adafruit_MAX1704X.h>
+#include <CayenneLPP.h>
+#include <FastLED.h>
+#include <hal/hal.h>
+
 #include "config.hpp"
 
 // Re-export selected configuration constants so that existing code that still
@@ -20,13 +27,6 @@ constexpr int MAX_SENSOR_READ  = config::MaxSensorRead;
 #define PIN_LMIC_DIO0 config::PinLmicDio0
 #define PIN_LMIC_DIO1 config::PinLmicDio1
 #define PIN_LMIC_DIO2 config::PinLmicDio2
-#include <Arduino.h>
-#include <lmic.h>
-
-#include <Adafruit_MAX1704X.h>
-#include <CayenneLPP.h>
-#include <FastLED.h>
-#include <hal/hal.h>
 
 struct sensorData {
     float soilMoisturePercentage;
@@ -47,7 +47,7 @@ extern bool maxLipoFound;
 extern Adafruit_MAX17048 maxlipo;
 
 void LoraWANPrintLMICOpmode(void);
-void LoraWANDebug(lmic_t lmic_check);
+void LoraWANDebug(const lmic_t& lmic_check);
 void PrintLMICVersion();
 void onEvent(ev_t ev);
 void do_send(osjob_t *j);

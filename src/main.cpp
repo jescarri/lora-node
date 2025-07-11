@@ -42,10 +42,10 @@ unsigned long entry;
 osjob_t sendjob;
 
 const lmic_pinmap lmic_pins = {
-    .nss            = PIN_LMIC_NSS,
+    .nss            = config::PinLmicNss,
     .rxtx           = LMIC_UNUSED_PIN,
-    .rst            = PIN_LMIC_RST,
-    .dio            = {PIN_LMIC_DIO0, PIN_LMIC_DIO1, PIN_LMIC_DIO2},
+    .rst            = config::PinLmicRst,
+    .dio            = {config::PinLmicDio0, config::PinLmicDio1, config::PinLmicDio2},
     .rxtx_rx_active = 0,
     .spi_freq       = 8000000,
 };
@@ -76,7 +76,7 @@ const unsigned TX_INTERVAL = 3600;
 
 void setup() {
     setCpuFrequencyMhz(40);
-    WiFi.mode(WIFI_OFF);
+    WiFiClass::mode(WIFI_OFF);
     WiFi.disconnect(true);
     esp_wifi_stop();
     esp_bt_controller_disable();
@@ -197,7 +197,7 @@ void PrintRuntime() {
     leds[0] = CRGB::Black;
     FastLED.show();
 
-    WiFi.mode(WIFI_OFF);
+    WiFiClass::mode(WIFI_OFF);
     WiFi.disconnect(true);
     btStop();
 

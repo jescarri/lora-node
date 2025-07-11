@@ -17,16 +17,7 @@
 constexpr int MAX_PAYLOAD_SIZE = config::MaxPayloadSize;
 constexpr int MAX_SENSOR_READ  = config::MaxSensorRead;
 
-#define SOIL_SENSOR_PIN config::SoilSensorPin
-
-// Keep compatibility symbols for legacy code.  These are intentionally *not*
-// placed inside a namespace so that they behave 1:1 like the previous
-// pre-processor macros.
-#define PIN_LMIC_NSS  config::PinLmicNss
-#define PIN_LMIC_RST  config::PinLmicRst
-#define PIN_LMIC_DIO0 config::PinLmicDio0
-#define PIN_LMIC_DIO1 config::PinLmicDio1
-#define PIN_LMIC_DIO2 config::PinLmicDio2
+// Remove legacy macros for pin constants. Use config::... directly.
 
 struct sensorData {
     float soilMoisturePercentage;

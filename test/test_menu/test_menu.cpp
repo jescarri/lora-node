@@ -1,4 +1,5 @@
 #include <unity.h>
+#include <array>
 
 #include "menu.hpp"
 #include "lorawan_settings.hpp"
@@ -22,12 +23,12 @@ bool maxLipoFound = false;
 // Extern declarations of the internal buffers defined in menu.cpp so that we
 // can validate their contents after calling the public functions under test.
 
-extern char char_ttn_app_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-extern char char_ttn_dev_eui[MAX_LORAWAN_CONF_CHAR_LEN];
-extern char char_ttn_app_key[MAX_LORAWAN_CONF_CHAR_LEN];
-extern char calibration_air_value_str[MAX_INT_STR_LEN];
-extern char calibration_water_value_str[MAX_INT_STR_LEN];
-extern char sleep_time_hours_str[MAX_INT_STR_LEN];
+extern std::array<char, MAX_LORAWAN_CONF_CHAR_LEN> char_ttn_app_eui;
+extern std::array<char, MAX_LORAWAN_CONF_CHAR_LEN> char_ttn_dev_eui;
+extern std::array<char, MAX_LORAWAN_CONF_CHAR_LEN> char_ttn_app_key;
+extern std::array<char, MAX_INT_STR_LEN> calibration_air_value_str;
+extern std::array<char, MAX_INT_STR_LEN> calibration_water_value_str;
+extern std::array<char, MAX_INT_STR_LEN> sleep_time_hours_str;
 
 // ---------------------------------------------------------------------------
 //  Test helpers
@@ -48,13 +49,13 @@ void test_load_settings_defaults() {
 
     loadSetings();
 
-    TEST_ASSERT_EQUAL_STRING("00000000", char_ttn_app_eui);
-    TEST_ASSERT_EQUAL_STRING("00000000", char_ttn_dev_eui);
-    TEST_ASSERT_EQUAL_STRING("00000000000000000000000000000000", char_ttn_app_key);
+    TEST_ASSERT_EQUAL_STRING("00000000", char_ttn_app_eui.data());
+    TEST_ASSERT_EQUAL_STRING("00000000", char_ttn_dev_eui.data());
+    TEST_ASSERT_EQUAL_STRING("00000000000000000000000000000000", char_ttn_app_key.data());
 
-    TEST_ASSERT_EQUAL_STRING("0", calibration_air_value_str);
-    TEST_ASSERT_EQUAL_STRING("0", calibration_water_value_str);
-    TEST_ASSERT_EQUAL_STRING("0", sleep_time_hours_str);
+    TEST_ASSERT_EQUAL_STRING("0", calibration_air_value_str.data());
+    TEST_ASSERT_EQUAL_STRING("0", calibration_water_value_str.data());
+    TEST_ASSERT_EQUAL_STRING("0", sleep_time_hours_str.data());
 }
 
 void test_load_settings_existing_values() {
@@ -69,13 +70,13 @@ void test_load_settings_existing_values() {
 
     loadSetings();
 
-    TEST_ASSERT_EQUAL_STRING("A1B2C3D4", char_ttn_app_eui);
-    TEST_ASSERT_EQUAL_STRING("D4C3B2A1", char_ttn_dev_eui);
-    TEST_ASSERT_EQUAL_STRING("FEDCBA98765432100123456789ABCDEF", char_ttn_app_key);
+    TEST_ASSERT_EQUAL_STRING("A1B2C3D4", char_ttn_app_eui.data());
+    TEST_ASSERT_EQUAL_STRING("D4C3B2A1", char_ttn_dev_eui.data());
+    TEST_ASSERT_EQUAL_STRING("FEDCBA98765432100123456789ABCDEF", char_ttn_app_key.data());
 
-    TEST_ASSERT_EQUAL_STRING("123", calibration_air_value_str);
-    TEST_ASSERT_EQUAL_STRING("456", calibration_water_value_str);
-    TEST_ASSERT_EQUAL_STRING("8", sleep_time_hours_str);
+    TEST_ASSERT_EQUAL_STRING("123", calibration_air_value_str.data());
+    TEST_ASSERT_EQUAL_STRING("456", calibration_water_value_str.data());
+    TEST_ASSERT_EQUAL_STRING("8", sleep_time_hours_str.data());
 }
 
 void test_load_settings_buffer_overflow() {

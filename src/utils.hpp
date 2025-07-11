@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstring>
+#include <array>
 
 // A small, constexpr-friendly wrapper around strncpy that guarantees
 // null-termination of the destination buffer and avoids silent buffer
@@ -40,4 +41,14 @@ inline void safe_strncpy(char (&dest)[N], const char *src) {
 
     // Always terminate.
     dest[i] = '\0';
+}
+
+template <size_t N>
+inline void safe_strncpy(std::array<char, N>& dest, const char* src) {
+    if (src) {
+        std::strncpy(dest.data(), src, N - 1);
+        dest[N - 1] = '\0';
+    } else {
+        dest[0] = '\0';
+    }
 }

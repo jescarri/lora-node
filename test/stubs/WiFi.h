@@ -15,7 +15,7 @@ constexpr int WIFI_POWER_8_5dBm = 0;
 
 class WiFiClass {
 public:
-    void mode(int /*m*/) {}
+    static void mode(int /*m*/) {}
     void disconnect(bool /*wifioff*/ = true) {}
     void setTxPower(int /*pwr*/) {}
 };

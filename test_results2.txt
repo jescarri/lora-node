@@ -1,0 +1,172 @@
+Verbosity level can be increased via `-v, -vv, or -vvv` option
+Collected 5 tests
+
+Processing test_lorawan in native environment
+--------------------------------------------------------------------------------
+Building...
+test/test_lorawan/test_lorawan.cpp:15:8: error: redefinition of ‘lmic_t LMIC’
+   15 | lmic_t LMIC{};
+      |        ^~~~
+In file included from src/lorawan.hpp:5,
+                 from test/test_lorawan/test_lorawan.cpp:3:
+test/stubs/lmic.h:17:8: note: ‘lmic_t LMIC’ previously defined here
+   17 | lmic_t LMIC{};
+      |        ^~~~
+*** [.pio/build/native/test/test_lorawan/test_lorawan.o] Error 1
+Building stage has failed, see errors above. Use `pio test -vvv` option to enable verbose output.
+--------------- native:test_lorawan [ERRORED] Took 0.81 seconds ---------------
+
+Processing test_lorawan_settings in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_lorawan_settings/test_lorawan_settings.cpp:122: test_string_roundtrip	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:123: test_string_default	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:124: test_bool_roundtrip	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:125: test_bool_default	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:127: test_sleep_time_default	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:128: test_sleep_time_custom	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:130: test_calibration_default	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:131: test_calibration_values	[PASSED]
+test/test_lorawan_settings/test_lorawan_settings.cpp:133: test_lmic_persistence	[PASSED]
+----------- native:test_lorawan_settings [PASSED] Took 1.07 seconds -----------
+
+Processing test_utils in native environment
+--------------------------------------------------------------------------------
+Building...
+Testing...
+test/test_utils/test_safe_strncpy.cpp:106: test_null_source	[PASSED]
+test/test_utils/test_safe_strncpy.cpp:107: test_exact_fit	[PASSED]
+test/test_utils/test_safe_strncpy.cpp:108: test_truncation	[PASSED]
+test/test_utils/test_safe_strncpy.cpp:109: test_buffer_integrity	[PASSED]
+test/test_utils/test_safe_strncpy.cpp:111: test_dest_size_one	[PASSED]
+test/test_utils/test_safe_strncpy.cpp:112: test_empty_source	[PASSED]
+test/test_utils/test_safe_strncpy.cpp:113: test_null_dest	[PASSED]
+----------------- native:test_utils [PASSED] Took 0.57 seconds -----------------
+
+Processing test_menu in native environment
+--------------------------------------------------------------------------------
+Building...
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `setUp':
+test_menu.cpp:(.text+0x369): multiple definition of `setUp'; .pio/build/native/test/test_menu/test_memory_management.o:test_memory_management.cpp:(.text+0xa6): first defined here
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `tearDown':
+test_menu.cpp:(.text+0x380): multiple definition of `tearDown'; .pio/build/native/test/test_menu/test_memory_management.o:test_memory_management.cpp:(.text+0xbd): first defined here
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `main':
+test_menu.cpp:(.text+0x397): multiple definition of `main'; .pio/build/native/test/test_menu/test_memory_management.o:test_memory_management.cpp:(.text+0xd4): first defined here
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: warning: relocation against `leds' in read-only section `.text'
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `startWebConf()':
+test_menu.cpp:(.text+0x12ad): undefined reference to `leds'
+/usr/bin/ld: test_menu.cpp:(.text+0x12ba): undefined reference to `leds'
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `saveConfigCallback()':
+test_menu.cpp:(.text+0x1c90): undefined reference to `leds'
+/usr/bin/ld: test_menu.cpp:(.text+0x1c9d): undefined reference to `leds'
+/usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+collect2: error: ld returned 1 exit status
+*** [.pio/build/native/program] Error 1
+Building stage has failed, see errors above. Use `pio test -vvv` option to enable verbose output.
+----------------- native:test_menu [ERRORED] Took 0.99 seconds -----------------
+
+Processing test_main in native environment
+--------------------------------------------------------------------------------
+Building...
+In file included from test/test_main/test_constants.cpp:4:
+src/lorawan_settings.hpp:37:1: error: ‘String’ does not name a type
+   37 | String settings_get_string(const char *key, const char *default_value = "");
+      | ^~~~~~
+In file included from .pio/libdeps/native/Unity/src/unity.h:21,
+                 from test/test_main/test_constants.cpp:1:
+test/test_main/test_constants.cpp: In function ‘void test_main_constants()’:
+test/test_main/test_constants.cpp:9:27: error: ‘VCC_ENA_PIN’ was not declared in this scope
+    9 |     TEST_ASSERT_EQUAL(13, VCC_ENA_PIN);
+      |                           ^~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:9:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+    9 |     TEST_ASSERT_EQUAL(13, VCC_ENA_PIN);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:10:27: error: ‘START_WEB_CONFIG_PIN’ was not declared in this scope
+   10 |     TEST_ASSERT_EQUAL(16, START_WEB_CONFIG_PIN);
+      |                           ^~~~~~~~~~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:10:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   10 |     TEST_ASSERT_EQUAL(16, START_WEB_CONFIG_PIN);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:11:26: error: ‘NUM_LEDS’ was not declared in this scope
+   11 |     TEST_ASSERT_EQUAL(1, NUM_LEDS);
+      |                          ^~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:11:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   11 |     TEST_ASSERT_EQUAL(1, NUM_LEDS);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:12:27: error: ‘LED_DATA_PIN’ was not declared in this scope
+   12 |     TEST_ASSERT_EQUAL(17, LED_DATA_PIN);
+      |                           ^~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:12:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   12 |     TEST_ASSERT_EQUAL(17, LED_DATA_PIN);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:13:35: error: ‘uS_TO_S_FACTOR’ was not declared in this scope
+   13 |     TEST_ASSERT_EQUAL(1000000ULL, uS_TO_S_FACTOR);
+      |                                   ^~~~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:13:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   13 |     TEST_ASSERT_EQUAL(1000000ULL, uS_TO_S_FACTOR);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:14:29: error: ‘TX_INTERVAL’ was not declared in this scope
+   14 |     TEST_ASSERT_EQUAL(3600, TX_INTERVAL);
+      |                             ^~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:14:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   14 |     TEST_ASSERT_EQUAL(3600, TX_INTERVAL);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp: In function ‘void test_lorawan_constants()’:
+test/test_main/test_constants.cpp:39:47: error: ‘MAX_PAYLOAD_SIZE’ was not declared in this scope
+   39 |     TEST_ASSERT_EQUAL(config::MaxPayloadSize, MAX_PAYLOAD_SIZE);
+      |                                               ^~~~~~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:39:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   39 |     TEST_ASSERT_EQUAL(config::MaxPayloadSize, MAX_PAYLOAD_SIZE);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:40:46: error: ‘MAX_SENSOR_READ’ was not declared in this scope
+   40 |     TEST_ASSERT_EQUAL(config::MaxSensorRead, MAX_SENSOR_READ);
+      |                                              ^~~~~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:40:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   40 |     TEST_ASSERT_EQUAL(config::MaxSensorRead, MAX_SENSOR_READ);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp: At global scope:
+test/test_main/test_constants.cpp:46:5: error: conflicting declaration of C function ‘int main(int, char**)’
+   46 | int main(int argc, char **argv) {
+      |     ^~~~
+In file included from test/test_main/test_constants.cpp:3:
+src/main.cpp:256:5: note: previous declaration ‘int main()’
+  256 | int main() { return 0; }
+      |     ^~~~
+*** [.pio/build/native/test/test_main/test_constants.o] Error 1
+Building stage has failed, see errors above. Use `pio test -vvv` option to enable verbose output.
+----------------- native:test_main [ERRORED] Took 0.58 seconds -----------------
+
+=================================== SUMMARY ===================================
+Environment    Test                   Status    Duration
+-------------  ---------------------  --------  ------------
+native         test_lorawan           ERRORED   00:00:00.810
+native         test_lorawan_settings  PASSED    00:00:01.071
+native         test_utils             PASSED    00:00:00.574
+native         test_menu              ERRORED   00:00:00.992
+native         test_main              ERRORED   00:00:00.581
+================= 19 test cases: 16 succeeded in 00:00:04.029 =================

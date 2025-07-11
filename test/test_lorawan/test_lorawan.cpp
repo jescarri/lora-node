@@ -10,6 +10,14 @@
 #include "../../src/lorawan_settings.cpp"
 #include "../../src/lorawan.cpp"
 
+#ifdef UNIT_TEST
+#include "../../test/stubs/esp32_gpio.h"
+lmic_t LMIC{};
+CRGB leds[1];
+volatile bool enableSleep_ = true;
+bool maxLipoFound = false;
+#endif
+
 // ---------------------------------------------------------------------------
 //  Helper utilities
 // ---------------------------------------------------------------------------
@@ -96,6 +104,16 @@ void test_LoraWANPrintLMICOpmode_executes() {
     TEST_ASSERT_TRUE(true); // Dummy assertion – reached when no exception.
 }
 
+void test_os_getArtEui_invalid_hex() {
+    clear_preferences();
+    settings_put_string("app_eui", "01020G0405060708"); // 'G' is not hex
+    uint8_t buf[8];
+    memset(buf, 0xAA, sizeof(buf));
+    os_getArtEui(buf);
+    uint8_t expected[8]{};
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected, buf, sizeof(buf));
+}
+
 // ---------------------------------------------------------------------------
 //  Unity runner
 // ---------------------------------------------------------------------------
@@ -111,6 +129,7 @@ int main(int argc, char **argv) {
     RUN_TEST(test_os_getDevEui_valid);
     RUN_TEST(test_os_getDevKey_valid);
     RUN_TEST(test_LoraWANPrintLMICOpmode_executes);
+    RUN_TEST(test_os_getArtEui_invalid_hex);
 
     return UNITY_END();
 }

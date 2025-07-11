@@ -1,0 +1,133 @@
+Collected 6 tests (test_lorawan, test_lorawan_settings, test_main, test_memory_management, test_menu, test_utils)
+
+Processing test_lorawan in native environment
+--------------------------------------------------------------------------------
+Building...
+
+
+Testing...
+test/test_lorawan/test_lorawan.cpp:127:test_os_getArtEui_valid:PASS
+test/test_lorawan/test_lorawan.cpp:128:test_os_getArtEui_invalid_length:PASS
+test/test_lorawan/test_lorawan.cpp:129:test_os_getDevEui_valid:PASS
+test/test_lorawan/test_lorawan.cpp:130:test_os_getDevKey_valid:PASS
+test/test_lorawan/test_lorawan.cpp:131:test_LoraWANPrintLMICOpmode_executes:PASS
+test/test_lorawan/test_lorawan.cpp:132:test_os_getArtEui_invalid_hex:PASS
+
+-----------------------
+6 Tests 0 Failures 0 Ignored 
+OK
+
+---------------- native:test_lorawan [PASSED] Took 0.69 seconds ----------------
+
+Processing test_lorawan_settings in native environment
+--------------------------------------------------------------------------------
+Building...
+test/test_lorawan_settings/test_lorawan_settings.cpp:11:1: error: ‘lmic_t’ does not name a type; did you mean ‘ldiv_t’?
+   11 | lmic_t LMIC{};
+      | ^~~~~~
+      | ldiv_t
+*** [.pio/build/native/test/test_lorawan_settings/test_lorawan_settings.o] Error 1
+Building stage has failed, see errors above. Use `pio test -vvv` option to enable verbose output.
+----------- native:test_lorawan_settings [ERRORED] Took 0.93 seconds -----------
+
+Processing test_utils in native environment
+--------------------------------------------------------------------------------
+Building...
+
+
+Testing...
+test/test_utils/test_safe_strncpy.cpp:106:test_null_source:PASS
+test/test_utils/test_safe_strncpy.cpp:107:test_exact_fit:PASS
+test/test_utils/test_safe_strncpy.cpp:108:test_truncation:PASS
+test/test_utils/test_safe_strncpy.cpp:109:test_buffer_integrity:PASS
+test/test_utils/test_safe_strncpy.cpp:111:test_dest_size_one:PASS
+test/test_utils/test_safe_strncpy.cpp:112:test_empty_source:PASS
+test/test_utils/test_safe_strncpy.cpp:113:test_null_dest:PASS
+
+-----------------------
+7 Tests 0 Failures 0 Ignored 
+OK
+
+----------------- native:test_utils [PASSED] Took 0.40 seconds -----------------
+
+Processing test_menu in native environment
+--------------------------------------------------------------------------------
+Building...
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: warning: relocation against `LMIC' in read-only section `.text'
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `load_lmic()':
+test_menu.cpp:(.text+0x1f16): undefined reference to `LMIC'
+/usr/bin/ld: test_menu.cpp:(.text+0x1f22): undefined reference to `LMIC'
+/usr/bin/ld: .pio/build/native/test/test_menu/test_menu.o: in function `lmic_save()':
+test_menu.cpp:(.text+0x1f9b): undefined reference to `LMIC'
+/usr/bin/ld: test_menu.cpp:(.text+0x1fc5): undefined reference to `LMIC'
+/usr/bin/ld: warning: creating DT_TEXTREL in a PIE
+collect2: error: ld returned 1 exit status
+*** [.pio/build/native/program] Error 1
+Building stage has failed, see errors above. Use `pio test -vvv` option to enable verbose output.
+----------------- native:test_menu [ERRORED] Took 0.38 seconds -----------------
+
+Processing test_memory_management in native environment
+--------------------------------------------------------------------------------
+Building...
+
+
+Testing...
+test/test_memory_management/test_memory_management.cpp:79:test_unique_ptr_creation:PASS
+test/test_memory_management/test_memory_management.cpp:80:test_unique_ptr_array:PASS
+test/test_memory_management/test_memory_management.cpp:81:test_const_array_access:PASS
+test/test_memory_management/test_memory_management.cpp:82:test_string_operations:PASS
+
+-----------------------
+4 Tests 0 Failures 0 Ignored 
+OK
+
+----------- native:test_memory_management [PASSED] Took 0.40 seconds -----------
+
+Processing test_main in native environment
+--------------------------------------------------------------------------------
+Building...
+In file included from test/test_main/test_constants.cpp:3:
+src/lorawan_settings.hpp:37:1: error: ‘String’ does not name a type
+   37 | String settings_get_string(const char *key, const char *default_value = "");
+      | ^~~~~~
+In file included from .pio/libdeps/native/Unity/src/unity.h:21,
+                 from test/test_main/test_constants.cpp:1:
+test/test_main/test_constants.cpp: In function ‘void test_lorawan_constants()’:
+test/test_main/test_constants.cpp:38:47: error: ‘MAX_PAYLOAD_SIZE’ was not declared in this scope
+   38 |     TEST_ASSERT_EQUAL(config::MaxPayloadSize, MAX_PAYLOAD_SIZE);
+      |                                               ^~~~~~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:38:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   38 |     TEST_ASSERT_EQUAL(config::MaxPayloadSize, MAX_PAYLOAD_SIZE);
+      |     ^~~~~~~~~~~~~~~~~
+test/test_main/test_constants.cpp:39:46: error: ‘MAX_SENSOR_READ’ was not declared in this scope
+   39 |     TEST_ASSERT_EQUAL(config::MaxSensorRead, MAX_SENSOR_READ);
+      |                                              ^~~~~~~~~~~~~~~
+.pio/libdeps/native/Unity/src/unity_internals.h:883:156: note: in definition of macro ‘UNITY_TEST_ASSERT_EQUAL_INT’
+  883 | #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, message)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (message), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)
+      |                                                                                                                                                            ^~~~~~
+test/test_main/test_constants.cpp:39:5: note: in expansion of macro ‘TEST_ASSERT_EQUAL’
+   39 |     TEST_ASSERT_EQUAL(config::MaxSensorRead, MAX_SENSOR_READ);
+      |     ^~~~~~~~~~~~~~~~~
+*** [.pio/build/native/test/test_main/test_constants.o] Error 1
+Building stage has failed, see errors above. Use `pio test -vvv` option to enable verbose output.
+----------------- native:test_main [ERRORED] Took 0.52 seconds -----------------
+
+=================================== SUMMARY ===================================
+Environment     Test                    Status    Duration
+--------------  ----------------------  --------  ------------
+ttgo-lora32-v1  test_lorawan            SKIPPED
+ttgo-lora32-v1  test_lorawan_settings   SKIPPED
+ttgo-lora32-v1  test_utils              SKIPPED
+ttgo-lora32-v1  test_menu               SKIPPED
+ttgo-lora32-v1  test_memory_management  SKIPPED
+ttgo-lora32-v1  test_main               SKIPPED
+native          test_lorawan            PASSED    00:00:00.686
+native          test_lorawan_settings   ERRORED   00:00:00.933
+native          test_utils              PASSED    00:00:00.396
+native          test_menu               ERRORED   00:00:00.380
+native          test_memory_management  PASSED    00:00:00.399
+native          test_main               ERRORED   00:00:00.522
+================= 20 test cases: 17 succeeded in 00:00:03.315 =================

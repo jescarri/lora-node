@@ -1,3 +1,4 @@
+#ifndef UNIT_TEST
 #include "WiFi.h"
 #include "driver/adc.h"
 
@@ -16,11 +17,11 @@
 #include <Wire.h>
 #include <hal/hal.h>
 
-#define VCC_ENA_PIN          13
-#define START_WEB_CONFIG_PIN 16
-#define NUM_LEDS             1
-#define LED_DATA_PIN         17
-#define uS_TO_S_FACTOR       1000000ULL
+constexpr int VCC_ENA_PIN = 13;
+constexpr int START_WEB_CONFIG_PIN = 16;
+constexpr int NUM_LEDS = 1;
+constexpr int LED_DATA_PIN = 17;
+constexpr unsigned long long uS_TO_S_FACTOR = 1000000ULL;
 
 lmic_t SETTINGS_LMIC;
 CayenneLPP lpp(MAX_PAYLOAD_SIZE);
@@ -41,10 +42,10 @@ unsigned long entry;
 osjob_t sendjob;
 
 const lmic_pinmap lmic_pins = {
-    .nss            = PIN_LMIC_NSS,
+    .nss            = config::PinLmicNss,
     .rxtx           = LMIC_UNUSED_PIN,
-    .rst            = PIN_LMIC_RST,
-    .dio            = {PIN_LMIC_DIO0, PIN_LMIC_DIO1, PIN_LMIC_DIO2},
+    .rst            = config::PinLmicRst,
+    .dio            = {config::PinLmicDio0, config::PinLmicDio1, config::PinLmicDio2},
     .rxtx_rx_active = 0,
     .spi_freq       = 8000000,
 };
@@ -75,7 +76,7 @@ const unsigned TX_INTERVAL = 3600;
 
 void setup() {
     setCpuFrequencyMhz(40);
-    WiFi.mode(WIFI_OFF);
+    WiFiClass::mode(WIFI_OFF);
     WiFi.disconnect(true);
     esp_wifi_stop();
     esp_bt_controller_disable();
@@ -187,7 +188,7 @@ void PrintRuntime() {
     Serial.println(" seconds");
 }
 
-void GoDeepSleep() {
+[[noreturn]] void GoDeepSleep() {
     // Turn off the lipo gauge:
     //
     unsigned long long sleepTime = get_sleep_time_seconds();
@@ -196,7 +197,7 @@ void GoDeepSleep() {
     leds[0] = CRGB::Black;
     FastLED.show();
 
-    WiFi.mode(WIFI_OFF);
+    WiFiClass::mode(WIFI_OFF);
     WiFi.disconnect(true);
     btStop();
 
@@ -250,3 +251,11 @@ void GoDeepSleep() {
     esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
 }
+#else
+// Minimal stubs for native build
+int main() { return 0; }
+#ifdef UNIT_TEST
+#include "../../test/stubs/esp32_gpio.h"
+lmic_t LMIC{};
+#endif
+#endif

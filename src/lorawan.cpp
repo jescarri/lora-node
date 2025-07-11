@@ -6,6 +6,7 @@
 #include <cctype>
 #include "lorawan_settings.hpp"
 #include <Adafruit_MAX1704X.h>
+#include <array>
 
 sensorData sd;
 
@@ -53,9 +54,6 @@ void LoraWANPrintLMICOpmode(void) {
     if (LMIC.opmode & OP_LINKDEAD) {
         Serial.print(F("OP_LINKDEAD "));
     }
-    if (LMIC.opmode & OP_LINKDEAD) {
-        Serial.print(F("OP_LINKDEAD "));
-    }
     if (LMIC.opmode & OP_TESTMODE) {
         Serial.print(F("OP_TESTMODE "));
     }
@@ -65,7 +63,7 @@ void LoraWANPrintLMICOpmode(void) {
 }
 
 #if !defined(UNIT_TEST)
-void LoraWANDebug(lmic_t lmic_check) {
+void LoraWANDebug(const lmic_t& lmic_check) {
     LoraWANPrintLMICOpmode();
     Serial.println("");
     Serial.println("-----");
@@ -144,21 +142,21 @@ void onEvent(ev_t ev) {
             {
                 u4_t netid        = 0;
                 devaddr_t devaddr = 0;
-                u1_t nwkKey[16];
-                u1_t artKey[16];
-                LMIC_getSessionKeys(&netid, &devaddr, nwkKey, artKey);
+                std::array<u1_t, 16> nwkKey{};
+                std::array<u1_t, 16> artKey{};
+                LMIC_getSessionKeys(&netid, &devaddr, nwkKey.data(), artKey.data());
                 Serial.print("netid: ");
                 Serial.println(netid, DEC);
                 Serial.print("devaddr: ");
                 Serial.println(devaddr, HEX);
                 Serial.print("artKey: ");
-                for (size_t i = 0; i < sizeof(artKey); ++i) {
-                    Serial.print(artKey[i], HEX);
+                for (auto val : artKey) {
+                    Serial.print(val, HEX);
                 }
                 Serial.println("");
                 Serial.print("nwkKey: ");
-                for (size_t i = 0; i < sizeof(nwkKey); ++i) {
-                    Serial.print(nwkKey[i], HEX);
+                for (auto val : nwkKey) {
+                    Serial.print(val, HEX);
                 }
                 Serial.println("");
             }
@@ -179,18 +177,13 @@ void onEvent(ev_t ev) {
         case EV_TXCOMPLETE:
             // Transmit completed, includes waiting for RX windows.
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
-            // setTxIndicatorsOn(false);
-            // printEvent(timestamp, ev);
-            // printFrameCounters();
             // Check if downlink was received
             if (LMIC.dataLen != 0 || LMIC.dataBeg != 0) {
-                uint8_t fPort = 0;
-                if (LMIC.txrxFlags & TXRX_PORT) {
-                    fPort = LMIC.frame[LMIC.dataBeg - 1];
-                }
-                // printDownlinkInfo();
-                // processDownlink(timestamp, fPort, LMIC.frame + LMIC.dataBeg,
-                // LMIC.dataLen);
+                // Downlink data received, could be processed here
+                // uint8_t fPort = 0;
+                // if (LMIC.txrxFlags & TXRX_PORT) {
+                //     fPort = LMIC.frame[LMIC.dataBeg - 1];
+                // }
             }
             enableSleep_ = true;
             break;
@@ -237,19 +230,19 @@ void onEvent(ev_t ev) {
     }
 }
 
-void do_send(osjob_t *j) {
+void do_send(osjob_t* /* j */) {
     lpp.reset();
     ReadSensors();
-    lpp.addGenericSensor(0, sd.soilMoistureValue);
+    lpp.addGenericSensor(0, static_cast<float>(sd.soilMoistureValue));
     lpp.addVoltage(1, sd.vBat);
     lpp.addPercentage(2, sd.soilMoisturePercentage);
     lpp.addSwitch(3, sd.lipoGaugeOk);
     lpp.addPercentage(4, sd.batPercent);
     lpp.addPercentage(5, sd.batRate);
-    lpp.addGenericSensor(6, get_calibration_air_value());
-    lpp.addGenericSensor(7, get_calibration_water_value());
-    lpp.addGenericSensor(8, get_sleep_time_seconds());
-    lpp.addGenericSensor(9, get_previous_runtime());
+    lpp.addGenericSensor(6, static_cast<float>(get_calibration_air_value()));
+    lpp.addGenericSensor(7, static_cast<float>(get_calibration_water_value()));
+    lpp.addGenericSensor(8, static_cast<float>(get_sleep_time_seconds()));
+    lpp.addGenericSensor(9, static_cast<float>(get_previous_runtime()));
 
     // Check if there is not a current TX/RX job running
     Serial.println("do_send");
@@ -274,7 +267,7 @@ void os_getArtEui(u1_t *buf) {
         return;
     }
 
-    u1_t app_eui[8];
+    std::array<u1_t, 8> app_eui{};
 
     for (int c = 0, i = 0; c < 8; ++c, i += 2) {
         if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
@@ -283,7 +276,7 @@ void os_getArtEui(u1_t *buf) {
             return;
         }
 
-        String t   = cfg.substring(i, i + 2);
+        std::string t   = cfg.substring(i, i + 2).c_str();
         app_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
 
@@ -293,7 +286,7 @@ void os_getArtEui(u1_t *buf) {
     }
     Serial.println();
 
-    memcpy_P(buf, app_eui, 8);
+    memcpy_P(buf, app_eui.data(), 8);
 }
 
 void os_getDevEui(u1_t *buf) {
@@ -305,7 +298,7 @@ void os_getDevEui(u1_t *buf) {
         return;
     }
 
-    u1_t dev_eui[8];
+    std::array<u1_t, 8> dev_eui{};
 
     for (int c = 0, i = 0; c < 8; ++c, i += 2) {
         if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
@@ -314,7 +307,7 @@ void os_getDevEui(u1_t *buf) {
             return;
         }
 
-        String t   = cfg.substring(i, i + 2);
+        std::string t   = cfg.substring(i, i + 2).c_str();
         dev_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
 
@@ -324,7 +317,7 @@ void os_getDevEui(u1_t *buf) {
     }
     Serial.println();
 
-    memcpy_P(buf, dev_eui, 8);
+    memcpy_P(buf, dev_eui.data(), 8);
 }
 
 void os_getDevKey(u1_t *buf) {
@@ -337,11 +330,11 @@ void os_getDevKey(u1_t *buf) {
         return;
     }
 
-    u1_t app_key[16];
+    std::array<u1_t, 16> app_key{};
 
     for (int c = 0, i = 0; c < 16; ++c, i += 2) {
         // Extract two hex digits as a String
-        String twoChars = cfg.substring(i, i + 2);
+        std::string twoChars = cfg.substring(i, i + 2).c_str();
 
         if (!isxdigit(twoChars[0]) || !isxdigit(twoChars[1])) {
             Serial.println("ERROR: app_key contains non-hex digits");
@@ -358,12 +351,12 @@ void os_getDevKey(u1_t *buf) {
     }
     Serial.println();
 
-    memcpy_P(buf, app_key, 16);
+    memcpy_P(buf, app_key.data(), 16);
 }
 
 void ReadSensors() {
-    sd.soilMoisturePercentage = 0;
-    sd.soilMoistureValue      = 0;
+    sd.soilMoisturePercentage = 0.0f;
+    sd.soilMoistureValue      = 0.0f;
     sd.lipoGaugeOk            = maxLipoFound;
     if (maxLipoFound == true) {
         sd.vBat       = maxlipo.cellVoltage();
@@ -373,14 +366,15 @@ void ReadSensors() {
         Serial.println(sd.batRate);
     }
     for (int i = 0; i < MAX_SENSOR_READ; i++) {
-        float a = analogRead(SOIL_SENSOR_PIN);
+        float a = static_cast<float>(analogRead(config::SoilSensorPin));
         sd.soilMoistureValue += a;
         delay(10);
     }
-    float t                   = sd.soilMoistureValue / MAX_SENSOR_READ;
+    float t                   = sd.soilMoistureValue / static_cast<float>(MAX_SENSOR_READ);
     sd.soilMoistureValue      = t;
-    float x                   = map(sd.soilMoistureValue, get_calibration_air_value(),
-                                    get_calibration_water_value(), 0, 100);
+    float x                   = static_cast<float>(map(static_cast<long>(sd.soilMoistureValue), 
+                                                       get_calibration_air_value(),
+                                                       get_calibration_water_value(), 0, 100));
     sd.soilMoisturePercentage = abs(x);
     Serial.printf("X: %f", x);
     Serial.println("");

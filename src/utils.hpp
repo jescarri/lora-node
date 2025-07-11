@@ -45,10 +45,14 @@ inline void safe_strncpy(char (&dest)[N], const char *src) {
 
 template <size_t N>
 inline void safe_strncpy(std::array<char, N>& dest, const char* src) {
-    if (src) {
-        std::strncpy(dest.data(), src, N - 1);
-        dest[N - 1] = '\0';
-    } else {
+    static_assert(N > 0, "Destination buffer must not be empty");
+    if (src == nullptr) {
         dest[0] = '\0';
+        return;
     }
+    std::size_t i = 0;
+    for (; i < N - 1 && src[i] != '\0'; ++i) {
+        dest[i] = src[i];
+    }
+    dest[i] = '\0';
 }

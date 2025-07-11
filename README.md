@@ -1,5 +1,7 @@
 # Lora Soil Moisture Sensor
 
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=jescarri_lora-node&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=jescarri_lora-node)
+
 This is a low-power, ESP32-powered LoRa board designed for general purposes. For this project, I used the board with a capacitive soil moisture sensor to monitor my houseplants.
 
 # The build

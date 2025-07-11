@@ -6,3 +6,4 @@ tmp/
 *.lck
 esp32-board.kicad_pcb/*
 esp32-board/esp32-board-backups/*
+sonar_issues.csv

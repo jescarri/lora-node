@@ -1,0 +1,35 @@
+#ifndef OTA_HPP_
+#define OTA_HPP_
+
+#include <Arduino.h>
+#include <ArduinoJson.h>
+#ifndef UNIT_TEST
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <Update.h>
+#endif
+#include <CayenneLPP.h>
+
+// OTA Update structure
+struct OtaUpdateInfo {
+    String url;
+    String md5sum;
+    String version;
+    bool valid;
+};
+
+// Function declarations
+void handleDownlinkMessage(uint8_t* data, uint8_t dataLen);
+bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& updateInfo);
+bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo);
+bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5);
+void reportFirmwareVersion(CayenneLPP& lpp);
+bool testWifiConnection(const String& ssid, const String& password);
+
+// Firmware version reporting
+#ifndef FIRMWARE_VERSION
+#define FIRMWARE_VERSION 100
+#endif
+constexpr float FIRMWARE_VERSION_FLOAT = FIRMWARE_VERSION;
+
+#endif // OTA_HPP_ 

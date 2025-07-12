@@ -1,25 +1,31 @@
 // Minimal stub for the Arduino WiFi (ESP32) API so that the production code
 // can be compiled natively during unit-testing.
 
-#pragma once
+#ifndef WIFI_H
+#define WIFI_H
 
-#include <cstdint>
-
-// WiFi mode constants – only the values are irrelevant for unit-tests, they
-// just need to compile.
-constexpr int WIFI_OFF = 0;
-constexpr int WIFI_STA = 1;
-
-// Mock power constants used in the code base.
-constexpr int WIFI_POWER_8_5dBm = 0;
+#ifdef UNIT_TEST
+char wifi_ssid_str[32] = "";
+char wifi_password_str[64] = "";
+#endif
 
 class WiFiClass {
 public:
-    static void mode(int /*m*/) {}
-    void disconnect(bool /*wifioff*/ = true) {}
-    void setTxPower(int /*pwr*/) {}
+    static void mode(int) {}
+    static void disconnect(bool = true) {}
+    static void setTxPower(int) {}
+    static int status() { return WL_CONNECTED; }
+    static String localIP() { return "192.168.1.100"; }
+    static void begin(const char*, const char*) {}
 };
 
-// Single global instance mimicking the Arduino API.
-static WiFiClass WiFi;
+#define WIFI_OFF 0
+#define WIFI_STA 1
+#define WL_CONNECTED 3
+#define WIFI_POWER_8_5dBm 0
+
+// Global WiFi instance
+extern WiFiClass WiFi;
+
+#endif // WIFI_H
 

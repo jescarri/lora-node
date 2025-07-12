@@ -1,104 +1,137 @@
-#pragma once
-#include <string>
+#ifndef ARDUINO_H
+#define ARDUINO_H
+
 #include <cstdint>
+#include <cstring>
+#include <string>
+#include <algorithm>
 
-// A very small subset of Arduino's String class sufficient for unit testing.
-class String : public std::string {
+// Arduino String class
+class String {
+private:
+    std::string str_;
+
 public:
-    String() = default;
-    String(const char *s) : std::string(s) {}
-    String(const std::string &s) : std::string(s) {}
-
-    // Convenience helpers mimicking the behaviour of the Arduino String API
-    // that are used by the production code but missing from std::string.
-    bool isEmpty() const { return this->empty(); }
-
-    // Return the substring in the half-open interval [from, to).
+    String() : str_("") {}
+    String(const char* s) : str_(s ? s : "") {}
+    String(const std::string& s) : str_(s) {}
+    
+    const char* c_str() const { return str_.c_str(); }
+    size_t length() const { return str_.length(); }
+    bool isEmpty() const { return str_.empty(); }
+    bool equals(const String& other) const { return str_ == other.str_; }
+    bool equalsIgnoreCase(const String& other) const { 
+        // Simple case-insensitive comparison
+        std::string lower1 = str_, lower2 = other.str_;
+        std::transform(lower1.begin(), lower1.end(), lower1.begin(), ::tolower);
+        std::transform(lower2.begin(), lower2.end(), lower2.begin(), ::tolower);
+        return lower1 == lower2;
+    }
+    
     String substring(size_t from, size_t to) const {
-        if (from >= size() || to <= from) {
+        if (from >= str_.length() || to <= from) {
             return String();
         }
-        return this->substr(from, to - from);
+        return String(str_.substr(from, to - from));
     }
-
-    // Arduino's String exposes c_str() already via std::string.
+    
+    String& operator=(const char* s) { str_ = s ? s : ""; return *this; }
+    String& operator=(const String& s) { str_ = s.str_; return *this; }
+    
+    operator const char*() const { return str_.c_str(); }
 };
 
-// Minimal Serial mock – discards all output.
-struct {
-    template <typename T>
-    void print(const T &) const {}
+// Arduino Serial
+class SerialClass {
+public:
+    void begin(int) {}
+    void print(const char*) {}
+    void print(int) {}
+    void print(int, int) {}  // value, base
+    void print(unsigned int) {}
+    void print(unsigned int, int) {}  // value, base
+    void print(long) {}
+    void print(long, int) {}  // value, base
+    void print(unsigned long) {}
+    void print(unsigned long, int) {}  // value, base
+    void print(float) {}
+    void print(const String&) {}
+    void println(const char*) {}
+    void println(int) {}
+    void println(int, int) {}  // value, base
+    void println(unsigned int) {}
+    void println(unsigned int, int) {}  // value, base
+    void println(long) {}
+    void println(long, int) {}  // value, base
+    void println(unsigned long) {}
+    void println(unsigned long, int) {}  // value, base
+    void println(float) {}
+    void println(const String&) {}
+    void println() {}
+    void printf(const char*, ...) {}
+    void flush() {}
+};
 
-    template <typename T>
-    void print(const T &, int /*base*/) const {}
+extern SerialClass Serial;
 
-    template <typename T>
-    void println(const T &) const {}
+// Arduino delay functions
+void delay(unsigned long);
+unsigned long millis();
 
-    template <typename T>
-    void println(const T &, int /*base*/) const {}
+// Arduino pin functions
+void pinMode(int, int);
+void digitalWrite(int, int);
+int digitalRead(int);
+int analogRead(int);
 
-    // Overload matching Serial.println() with no arguments which just prints
-    // a new line in the real implementation. In the stub this is a no-op.
-    void println() const {}
+// Arduino random functions
+void randomSeed(unsigned long);
+int random(int);
+int random(int, int);
 
-    // Format-style output helper used by production code; always returns the
-    // number of bytes that would have been written (zero here because we drop
-    // the data in the stub environment).
-    template <typename... Args>
-    int printf(const char *, Args...) const { return 0; }
-} Serial;
-
-// ---------------------------------------------------------------------------
-// Arduino formatting constants (base indicators) expected by production code.
-// ---------------------------------------------------------------------------
-#ifndef DEC
-#define DEC 10
-#endif
-
-#ifndef HEX
-#define HEX 16
-#endif
-
+// Arduino constants
 #define HIGH 1
-#define LOW  0
-
-using byte = uint8_t;
-
-#ifndef F
+#define LOW 0
+#define DEC 10
+#define HEX 16
 #define F(x) x
-#endif
 
-// Delay stub – no-op in the host environment.
-inline void delay(unsigned long) {}
-
-// Simple linear map function replicating Arduino's behaviour but for `long`
-// values only (sufficient for the code under test).
+// Arduino map function
 template <typename T>
 static inline T map(T x, T in_min, T in_max, T out_min, T out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-// Dedicated overload for floating-point input which ensures that all
-// parameters are treated as double to avoid the template type deduction issue
-// seen when mixing `float` and integral constants.
-inline float map(float x, float in_min, float in_max, float out_min, float out_max) {
+// Float overload for mixed type calls
+static inline float map(float x, float in_min, float in_max, float out_min, float out_max) {
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-// ADC stub
-inline int analogRead(int) { return 0; }
-
-// The AVR/ESP `memcpy_P` helper copies from program memory (flash). In the
-// host environment we do not distinguish between flash and RAM, so a regular
-// `memcpy` is sufficient.
-#ifndef memcpy_P
-#include <cstring>
+// memcpy_P stub
 #define memcpy_P(dest, src, n) std::memcpy((dest), (src), (n))
+
+// Settings functions
+void settings_clear();
+void loadSetings();
+void initMenu();
+void saveConfigCallback();
+
+// Global instances for WiFi and FastLED
+extern class WiFiClass WiFi;
+extern class FastLEDClass FastLED;
+
+// ESP32 specific
+class ESPClass {
+public:
+    void restart() {}
+};
+
+extern ESPClass ESP;
+
+// WiFi global variables for UNIT_TEST
+#ifdef UNIT_TEST
+extern char wifi_ssid_str[32];
+extern char wifi_password_str[64];
 #endif
 
-
-// Bring in additional stubs that many source files expect after the generic
-// Arduino header.
-#include "WiFi.h"
-#include "esp_system.h"
+#endif // ARDUINO_H

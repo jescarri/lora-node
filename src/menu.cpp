@@ -1,5 +1,6 @@
 #include "menu.hpp"
 #include "lorawan_settings.hpp"
+#include "ota.hpp"
 #include <cstring>
 #include "utils.hpp"
 #include <memory>
@@ -20,6 +21,8 @@ char char_ttn_app_key[MAX_LORAWAN_CONF_CHAR_LEN];
 char calibration_air_value_str[MAX_INT_STR_LEN];
 char calibration_water_value_str[MAX_INT_STR_LEN];
 char sleep_time_hours_str[MAX_INT_STR_LEN];
+char wifi_ssid_str[32];
+char wifi_password_str[64];
 #endif
 
 const char* menu[] = {"param", "restart"};
@@ -32,6 +35,8 @@ std::unique_ptr<WiFiManagerParameter> ttn_app_key;
 std::unique_ptr<WiFiManagerParameter> calibration_air_value;
 std::unique_ptr<WiFiManagerParameter> calibration_water_value;
 std::unique_ptr<WiFiManagerParameter> sleep_time_hours;
+std::unique_ptr<WiFiManagerParameter> wifi_ssid;
+std::unique_ptr<WiFiManagerParameter> wifi_password;
 
 void loadSetings() {
     if (settings_has_key("app_eui")) {
@@ -116,6 +121,35 @@ void loadSetings() {
         safe_strncpy(sleep_time_hours_str, "0");
 #endif
     }
+    
+    // Load WiFi settings
+    if (settings_has_key("wifi_ssid")) {
+#ifdef UNIT_TEST
+        safe_strncpy(wifi_ssid_str, settings_get_string("wifi_ssid").c_str());
+#else
+        safe_strncpy(wifi_ssid_str, settings_get_string("wifi_ssid").c_str());
+#endif
+    } else {
+#ifdef UNIT_TEST
+        safe_strncpy(wifi_ssid_str, "");
+#else
+        safe_strncpy(wifi_ssid_str, "");
+#endif
+    }
+    
+    if (settings_has_key("wifi_password")) {
+#ifdef UNIT_TEST
+        safe_strncpy(wifi_password_str, settings_get_string("wifi_password").c_str());
+#else
+        safe_strncpy(wifi_password_str, settings_get_string("wifi_password").c_str());
+#endif
+    } else {
+#ifdef UNIT_TEST
+        safe_strncpy(wifi_password_str, "");
+#else
+        safe_strncpy(wifi_password_str, "");
+#endif
+    }
 }
 
 void initMenu() {
@@ -160,12 +194,26 @@ void initMenu() {
 #else
         new WiFiManagerParameter("sleep_time_hours", "Sleep Time in Hours", sleep_time_hours_str, MAX_INT_STR_LEN));
 #endif
+    wifi_ssid = std::unique_ptr<WiFiManagerParameter>(
+#ifdef UNIT_TEST
+        new WiFiManagerParameter("wifi_ssid", "WiFi SSID", wifi_ssid_str, 32));
+#else
+        new WiFiManagerParameter("wifi_ssid", "WiFi SSID", wifi_ssid_str, 32));
+#endif
+    wifi_password = std::unique_ptr<WiFiManagerParameter>(
+#ifdef UNIT_TEST
+        new WiFiManagerParameter("wifi_password", "WiFi Password", wifi_password_str, 64, "type=\"password\""));
+#else
+        new WiFiManagerParameter("wifi_password", "WiFi Password", wifi_password_str, 64, "type=\"password\""));
+#endif
     wifiManager.addParameter(ttn_app_eui.get());
     wifiManager.addParameter(ttn_dev_eui.get());
     wifiManager.addParameter(ttn_app_key.get());
     wifiManager.addParameter(calibration_air_value.get());
     wifiManager.addParameter(calibration_water_value.get());
     wifiManager.addParameter(sleep_time_hours.get());
+    wifiManager.addParameter(wifi_ssid.get());
+    wifiManager.addParameter(wifi_password.get());
     wifiManager.setMenu(menu, sizeof(menu) / sizeof(menu[0]));
 }
 
@@ -191,9 +239,30 @@ void saveConfigCallback() {
     settings_put_string("c_air_v", calibration_air_value->getValue());
     settings_put_string("c_water_v", calibration_water_value->getValue());
     settings_put_string("sleep_hours", sleep_time_hours->getValue());
+    
+    // Save WiFi settings
+    settings_put_string("wifi_ssid", wifi_ssid->getValue());
+    settings_put_string("wifi_password", wifi_password->getValue());
 
     settings_put_bool("ttn_otaa_config", true);
-    leds[0] = CRGB::Green;
+    
+    // Test WiFi connection if SSID is provided
+    String ssid = wifi_ssid->getValue();
+    String password = wifi_password->getValue();
+    
+    if (ssid.length() > 0) {
+        Serial.println("Testing WiFi connection...");
+        if (testWifiConnection(ssid, password)) {
+            Serial.println("WiFi test successful");
+            leds[0] = CRGB::Green;
+        } else {
+            Serial.println("WiFi test failed");
+            leds[0] = CRGB::Orange;
+        }
+    } else {
+        leds[0] = CRGB::Green;
+    }
+    
     FastLED.show();
 }
 

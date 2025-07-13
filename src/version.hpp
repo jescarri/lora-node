@@ -5,11 +5,11 @@
 namespace version {
 
 /**
- * @brief Get the firmware version as a float
- * @return Firmware version as float (e.g., 1.0, 1.1, 2.0)
+ * @brief Get the firmware version as an integer
+ * @return Firmware version as integer (e.g., 100 for v1.0.0, 110 for v1.1.0)
  */
-inline float getFirmwareVersionFloat() {
-    return config::FirmwareVersionFloat;
+inline int getFirmwareVersionInt() {
+    return config::FirmwareVersionInt;
 }
 
 /**
@@ -28,7 +28,7 @@ void printFirmwareVersion();
  * @return true if development build, false if release build
  */
 inline bool isDevelopmentBuild() {
-    return config::FirmwareVersionFloat == 0.0f;
+    return config::FirmwareVersionInt == 0;
 }
 
 /**

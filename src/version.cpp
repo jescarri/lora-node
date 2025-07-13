@@ -5,14 +5,19 @@
 namespace version {
 
 const char* getFirmwareVersion() {
-    static char versionString[16];
+    static std::string versionString;
     
     if (isDevelopmentBuild()) {
         return "dev";
     } else {
-        // Convert float to string (e.g., 1.0 -> "1.0")
-        snprintf(versionString, sizeof(versionString), "%.1f", getFirmwareVersionFloat());
-        return versionString;
+        // Convert integer to semantic version string (e.g., 110 -> "v1.1.0")
+        int versionInt = getFirmwareVersionInt();
+        int major = versionInt / 100;
+        int minor = (versionInt % 100) / 10;
+        int patch = versionInt % 10;
+        
+        versionString = "v" + std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
+        return versionString.c_str();
     }
 }
 
@@ -33,15 +38,15 @@ void printFirmwareVersion() {
 }
 
 const char* getBuildInfo() {
-    static char buildInfo[64];
+    static std::string buildInfo;
     
     if (isDevelopmentBuild()) {
-        snprintf(buildInfo, sizeof(buildInfo), "Development Build");
+        buildInfo = "Development Build";
     } else {
-        snprintf(buildInfo, sizeof(buildInfo), "Release v%s", getFirmwareVersion());
+        buildInfo = "Release v" + std::string(getFirmwareVersion());
     }
     
-    return buildInfo;
+    return buildInfo.c_str();
 }
 
 } // namespace version 

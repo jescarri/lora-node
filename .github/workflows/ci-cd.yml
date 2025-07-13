@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - '[0-9]+.[0-9]+'  # Matches only float numbers like 1.0, 1.1, 2.0, etc.
+      - '[0-9]{3}'  # Matches only 3-digit integers like 100, 110, 112, etc.
   pull_request:
     types: [opened, synchronize, reopened]
 
@@ -150,20 +150,20 @@ jobs:
           
           # Check if tag starts with 'v' (invalid)
           if [[ "$TAG_NAME" == v* ]]; then
-            echo "❌ Error: Tag '$TAG_NAME' starts with 'v'. Tags must be float numbers like '1.0', '1.1', '2.0', etc."
-            echo "Valid examples: 1.0, 1.1, 2.0, 10.2"
-            echo "Invalid examples: v1.0, 1.0.0, 1.0.1, version1.0"
+            echo "❌ Error: Tag '$TAG_NAME' starts with 'v'. Tags must be 3-digit integers like '100', '110', '112', etc."
+            echo "Valid examples: 100 (v1.0.0), 110 (v1.1.0), 112 (v1.1.2)"
+            echo "Invalid examples: v100, 1.0, 1.1, 1000, 99"
             exit 1
           fi
           
-          # Check if tag matches float number pattern (X.Y format only)
-          if [[ "$TAG_NAME" =~ ^[0-9]+\.[0-9]+$ ]]; then
-            echo "✅ Tag '$TAG_NAME' is a valid float number"
+          # Check if tag matches 3-digit integer pattern
+          if [[ "$TAG_NAME" =~ ^[0-9]{3}$ ]]; then
+            echo "✅ Tag '$TAG_NAME' is a valid 3-digit integer"
             echo "firmware_version=$TAG_NAME" >> $GITHUB_OUTPUT
           else
-            echo "❌ Error: Tag '$TAG_NAME' is not a valid float number"
-            echo "Valid format: X.Y where X and Y are numbers (e.g., 1.0, 1.1, 2.0)"
-            echo "Invalid examples: 1.0.0, 1.0.1, 1, 1., v1.0"
+            echo "❌ Error: Tag '$TAG_NAME' is not a valid 3-digit integer"
+            echo "Valid format: XXX where X are numbers (e.g., 100, 110, 112)"
+            echo "Invalid examples: 1.0, 1.1, 1000, 99, v100"
             exit 1
           fi
 

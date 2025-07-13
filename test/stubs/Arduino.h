@@ -1,124 +1,123 @@
 #ifndef ARDUINO_H
 #define ARDUINO_H
 
+#include <string>
 #include <cstdint>
 #include <cstring>
-#include <string>
-#include <algorithm>
+#include <cctype>
 
-// Arduino String class
+// Minimal Arduino String class
 class String {
 private:
-    std::string str_;
+    std::string str;
 
 public:
-    String() : str_("") {}
-    String(const char* s) : str_(s ? s : "") {}
-    String(const std::string& s) : str_(s) {}
+    String() : str("") {}
+    String(const char* s) : str(s ? s : "") {}
+    String(const char* s, size_t n) : str(s ? std::string(s, n) : "") {}
+    String(const String& s) : str(s.str) {}
+    String(const std::string& s) : str(s) {}
     
-    const char* c_str() const { return str_.c_str(); }
-    size_t length() const { return str_.length(); }
-    bool isEmpty() const { return str_.empty(); }
-    bool equals(const String& other) const { return str_ == other.str_; }
-    bool equalsIgnoreCase(const String& other) const { 
-        // Simple case-insensitive comparison
-        std::string lower1 = str_, lower2 = other.str_;
-        std::transform(lower1.begin(), lower1.end(), lower1.begin(), ::tolower);
-        std::transform(lower2.begin(), lower2.end(), lower2.begin(), ::tolower);
-        return lower1 == lower2;
+    const char* c_str() const { return str.c_str(); }
+    int length() const { return static_cast<int>(str.length()); }
+    bool isEmpty() const { return str.empty(); }
+    
+    String& operator=(const char* s) { str = s ? s : ""; return *this; }
+    String& operator=(const String& s) { str = s.str; return *this; }
+    
+    bool operator==(const String& s) const { return str == s.str; }
+    bool operator==(const char* s) const { return str == (s ? s : ""); }
+    
+    char operator[](int index) const { return str[index]; }
+    char& operator[](int index) { return str[index]; }
+    
+    String substring(int start, int end = -1) const {
+        if (end == -1) end = static_cast<int>(str.length());
+        if (start < 0) start = 0;
+        if (end > static_cast<int>(str.length())) end = static_cast<int>(str.length());
+        if (start >= end) return String("");
+        return String(str.substr(start, end - start));
     }
     
-    String substring(size_t from, size_t to) const {
-        if (from >= str_.length() || to <= from) {
-            return String();
-        }
-        return String(str_.substr(from, to - from));
+    int toInt() const {
+        try { return std::stoi(str); } catch (...) { return 0; }
     }
     
-    String& operator=(const char* s) { str_ = s ? s : ""; return *this; }
-    String& operator=(const String& s) { str_ = s.str_; return *this; }
+    float toFloat() const {
+        try { return std::stof(str); } catch (...) { return 0.0f; }
+    }
     
-    operator const char*() const { return str_.c_str(); }
+    // ArduinoJson compatibility
+    int read() { 
+        static size_t read_pos = 0;
+        if (read_pos < str.length()) return str[read_pos++];
+        return -1;
+    }
 };
 
-// Arduino Serial
-class SerialClass {
-public:
-    void begin(int) {}
-    void print(const char*) {}
-    void print(int) {}
-    void print(int, int) {}  // value, base
-    void print(unsigned int) {}
-    void print(unsigned int, int) {}  // value, base
-    void print(long) {}
-    void print(long, int) {}  // value, base
-    void print(unsigned long) {}
-    void print(unsigned long, int) {}  // value, base
-    void print(float) {}
-    void print(const String&) {}
-    void println(const char*) {}
-    void println(int) {}
-    void println(int, int) {}  // value, base
-    void println(unsigned int) {}
-    void println(unsigned int, int) {}  // value, base
-    void println(long) {}
-    void println(long, int) {}  // value, base
-    void println(unsigned long) {}
-    void println(unsigned long, int) {}  // value, base
-    void println(float) {}
-    void println(const String&) {}
-    void println() {}
-    void printf(const char*, ...) {}
-    void flush() {}
-};
+// Basic Arduino types
+typedef unsigned char uint8_t;
+typedef signed char int8_t;
+typedef unsigned short uint16_t;
+typedef signed short int16_t;
+typedef unsigned int uint32_t;
+typedef signed int int32_t;
 
-extern SerialClass Serial;
-
-// Arduino delay functions
-void delay(unsigned long);
-unsigned long millis();
-
-// Arduino pin functions
-void pinMode(int, int);
-void digitalWrite(int, int);
-int digitalRead(int);
-int analogRead(int);
-
-// Arduino random functions
-void randomSeed(unsigned long);
-int random(int);
-int random(int, int);
-
-// Arduino constants
+// Basic Arduino constants
 #define HIGH 1
 #define LOW 0
+#define INPUT 0
+#define OUTPUT 1
 #define DEC 10
 #define HEX 16
 #define F(x) x
 
-// Arduino map function
-template <typename T>
-static inline T map(T x, T in_min, T in_max, T out_min, T out_max) {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
-
-// Float overload for mixed type calls
-static inline float map(float x, float in_min, float in_max, float out_min, float out_max) {
-    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
-}
+// Basic Arduino functions
+void delay(unsigned long ms);
+unsigned long millis();
+void digitalWrite(int pin, int value);
+int digitalRead(int pin);
+void pinMode(int pin, int mode);
+int analogRead(int pin);
+int map(int value, int fromLow, int fromHigh, int toLow, int toHigh);
+float map(float value, float fromLow, float fromHigh, float toLow, float toHigh);
 
 // memcpy_P stub
 #define memcpy_P(dest, src, n) std::memcpy((dest), (src), (n))
 
-// Settings functions
-void settings_clear();
-void loadSetings();
-void initMenu();
-void saveConfigCallback();
+// Minimal Serial class
+class SerialClass {
+public:
+    void begin(unsigned long baud) {}
+    void print(const char* str) {}
+    void print(const String& str) {}
+    void print(int value) {}
+    void print(int value, int base) {}
+    void print(unsigned int value) {}
+    void print(unsigned int value, int base) {}
+    void print(long value) {}
+    void print(long value, int base) {}
+    void print(unsigned long value) {}
+    void print(unsigned long value, int base) {}
+    void print(float value) {}
+    void println(const char* str) {}
+    void println(const String& str) {}
+    void println(int value) {}
+    void println(int value, int base) {}
+    void println(unsigned int value) {}
+    void println(unsigned int value, int base) {}
+    void println(long value) {}
+    void println(long value, int base) {}
+    void println(unsigned long value) {}
+    void println(unsigned long value, int base) {}
+    void println(float value) {}
+    void println() {}
+    void printf(const char* format, ...) {}
+    int available() { return 0; }
+    int read() { return -1; }
+};
 
-// Global instances for WiFi and FastLED
-extern class WiFiClass WiFi;
-extern class FastLEDClass FastLED;
+extern SerialClass Serial;
 
 // ESP32 specific
 class ESPClass {
@@ -127,11 +126,5 @@ public:
 };
 
 extern ESPClass ESP;
-
-// WiFi global variables for UNIT_TEST
-#ifdef UNIT_TEST
-extern char wifi_ssid_str[32];
-extern char wifi_password_str[64];
-#endif
 
 #endif // ARDUINO_H

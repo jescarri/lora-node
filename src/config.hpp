@@ -23,7 +23,7 @@ constexpr int PinLmicDio1 = 33;
 constexpr int PinLmicDio2 = 32;
 
 // LoRaWAN / payload ----------------------------------------------------------
-constexpr int MaxPayloadSize = 51;
+constexpr int MaxPayloadSize = 55;  // Increased to accommodate firmware version
 
 // Sensors --------------------------------------------------------------------
 constexpr int SoilSensorPin = 34;     // ADC1_CH6
@@ -35,11 +35,11 @@ constexpr int MaxSensorRead = 1;
 
 // Firmware Version -----------------------------------------------------------
 // The FIRMWARE_VERSION is set by the CI/CD pipeline during compilation
-// Format: X.Y (e.g., 1.0, 1.1, 2.0)
+// Format: 3-digit integer (e.g., 100 for v1.0.0, 110 for v1.1.0, 112 for v1.1.2)
 #ifdef FIRMWARE_VERSION
-    constexpr float FirmwareVersionFloat = FIRMWARE_VERSION;
+    constexpr int FirmwareVersionInt = static_cast<int>(FIRMWARE_VERSION);
 #else
-    constexpr float FirmwareVersionFloat = 0.0f; // Development build
+    constexpr int FirmwareVersionInt = 0; // Development build
 #endif
 
 } // namespace config

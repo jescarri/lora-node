@@ -28,6 +28,6 @@ void reportFirmwareVersion(CayenneLPP& lpp);
 bool testWifiConnection(const String& ssid, const String& password);
 
 // Firmware version reporting - will be resolved at runtime
-float getFirmwareVersionFloat();
+int getFirmwareVersionInt();
 
 #endif        // OTA_HPP_

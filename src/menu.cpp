@@ -28,15 +28,17 @@ char wifi_password_str[64];
 const char* menu[] = {"param", "restart"};
 
 WiFiManager wifiManager;
-std::unique_ptr<WiFiManagerParameter> ttn_app_eui;
-std::unique_ptr<WiFiManagerParameter> ttn_dev_eui;
-std::unique_ptr<WiFiManagerParameter> ttn_app_key;
+// Use raw pointers for WiFiManager parameters since WiFiManager doesn't take ownership
+// These will be managed manually and cleaned up when no longer needed
+WiFiManagerParameter* ttn_app_eui = nullptr;
+WiFiManagerParameter* ttn_dev_eui = nullptr;
+WiFiManagerParameter* ttn_app_key = nullptr;
 
-std::unique_ptr<WiFiManagerParameter> calibration_air_value;
-std::unique_ptr<WiFiManagerParameter> calibration_water_value;
-std::unique_ptr<WiFiManagerParameter> sleep_time_hours;
-std::unique_ptr<WiFiManagerParameter> wifi_ssid;
-std::unique_ptr<WiFiManagerParameter> wifi_password;
+WiFiManagerParameter* calibration_air_value = nullptr;
+WiFiManagerParameter* calibration_water_value = nullptr;
+WiFiManagerParameter* sleep_time_hours = nullptr;
+WiFiManagerParameter* wifi_ssid = nullptr;
+WiFiManagerParameter* wifi_password = nullptr;
 
 void loadSetings() {
     if (settings_has_key("app_eui")) {
@@ -153,67 +155,75 @@ void loadSetings() {
 }
 
 void initMenu() {
-    WiFi.mode(WIFI_STA);
+    WiFiClass::mode(WIFI_STA);
     wifiManager.setMinimumSignalQuality(90);
     wifiManager.setRemoveDuplicateAPs(true);
     wifiManager.setSaveParamsCallback(saveConfigCallback);
     loadSetings();
-    ttn_app_eui = std::unique_ptr<WiFiManagerParameter>(
+    ttn_app_eui = new WiFiManagerParameter("app_eui", "AppEUI lsb", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("app_eui", "AppEUI lsb", char_ttn_app_eui.data(), MAX_LORAWAN_CONF_CHAR_LEN));
+        char_ttn_app_eui.data()
 #else
-        new WiFiManagerParameter("app_eui", "AppEUI lsb", char_ttn_app_eui, MAX_LORAWAN_CONF_CHAR_LEN));
+        char_ttn_app_eui
 #endif
-    ttn_dev_eui = std::unique_ptr<WiFiManagerParameter>(
+        , MAX_LORAWAN_CONF_CHAR_LEN);
+    ttn_dev_eui = new WiFiManagerParameter("dev_eui", "DevEUI lsb", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("dev_eui", "DevEUI lsb", char_ttn_dev_eui.data(), MAX_LORAWAN_CONF_CHAR_LEN));
+        char_ttn_dev_eui.data()
 #else
-        new WiFiManagerParameter("dev_eui", "DevEUI lsb", char_ttn_dev_eui, MAX_LORAWAN_CONF_CHAR_LEN));
+        char_ttn_dev_eui
 #endif
-    ttn_app_key = std::unique_ptr<WiFiManagerParameter>(
+        , MAX_LORAWAN_CONF_CHAR_LEN);
+    ttn_app_key = new WiFiManagerParameter("app_key", "APP Key msb", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("app_key", "APP Key msb", char_ttn_app_key.data(), MAX_LORAWAN_CONF_CHAR_LEN));
+        char_ttn_app_key.data()
 #else
-        new WiFiManagerParameter("app_key", "APP Key msb", char_ttn_app_key, MAX_LORAWAN_CONF_CHAR_LEN));
+        char_ttn_app_key
 #endif
-    calibration_air_value = std::unique_ptr<WiFiManagerParameter>(
+        , MAX_LORAWAN_CONF_CHAR_LEN);
+    calibration_air_value = new WiFiManagerParameter("calibration_air_value", "Calibration Air Value", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("calibration_air_value", "Calibration Air Value", calibration_air_value_str.data(), MAX_INT_STR_LEN));
+        calibration_air_value_str.data()
 #else
-        new WiFiManagerParameter("calibration_air_value", "Calibration Air Value", calibration_air_value_str, MAX_INT_STR_LEN));
+        calibration_air_value_str
 #endif
-    calibration_water_value = std::unique_ptr<WiFiManagerParameter>(
+        , MAX_INT_STR_LEN);
+    calibration_water_value = new WiFiManagerParameter("calibration_water_value", "Calibration Water Value", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("calibration_water_value", "Calibration Water Value", calibration_water_value_str.data(), MAX_INT_STR_LEN));
+        calibration_water_value_str.data()
 #else
-        new WiFiManagerParameter("calibration_water_value", "Calibration Water Value", calibration_water_value_str, MAX_INT_STR_LEN));
+        calibration_water_value_str
 #endif
-    sleep_time_hours = std::unique_ptr<WiFiManagerParameter>(
+        , MAX_INT_STR_LEN);
+    sleep_time_hours = new WiFiManagerParameter("sleep_time_hours", "Sleep Time in Hours", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("sleep_time_hours", "Sleep Time in Hours", sleep_time_hours_str.data(), MAX_INT_STR_LEN));
+        sleep_time_hours_str.data()
 #else
-        new WiFiManagerParameter("sleep_time_hours", "Sleep Time in Hours", sleep_time_hours_str, MAX_INT_STR_LEN));
+        sleep_time_hours_str
 #endif
-    wifi_ssid = std::unique_ptr<WiFiManagerParameter>(
+        , MAX_INT_STR_LEN);
+    wifi_ssid = new WiFiManagerParameter("wifi_ssid", "WiFi SSID", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("wifi_ssid", "WiFi SSID", wifi_ssid_str, 32));
+        wifi_ssid_str
 #else
-        new WiFiManagerParameter("wifi_ssid", "WiFi SSID", wifi_ssid_str, 32));
+        wifi_ssid_str
 #endif
-    wifi_password = std::unique_ptr<WiFiManagerParameter>(
+        , 32);
+    wifi_password = new WiFiManagerParameter("wifi_password", "WiFi Password", 
 #ifdef UNIT_TEST
-        new WiFiManagerParameter("wifi_password", "WiFi Password", wifi_password_str, 64, "type=\"password\""));
+        wifi_password_str
 #else
-        new WiFiManagerParameter("wifi_password", "WiFi Password", wifi_password_str, 64, "type=\"password\""));
+        wifi_password_str
 #endif
-    wifiManager.addParameter(ttn_app_eui.get());
-    wifiManager.addParameter(ttn_dev_eui.get());
-    wifiManager.addParameter(ttn_app_key.get());
-    wifiManager.addParameter(calibration_air_value.get());
-    wifiManager.addParameter(calibration_water_value.get());
-    wifiManager.addParameter(sleep_time_hours.get());
-    wifiManager.addParameter(wifi_ssid.get());
-    wifiManager.addParameter(wifi_password.get());
+        , 64, "type=\"password\"");
+    wifiManager.addParameter(ttn_app_eui);
+    wifiManager.addParameter(ttn_dev_eui);
+    wifiManager.addParameter(ttn_app_key);
+    wifiManager.addParameter(calibration_air_value);
+    wifiManager.addParameter(calibration_water_value);
+    wifiManager.addParameter(sleep_time_hours);
+    wifiManager.addParameter(wifi_ssid);
+    wifiManager.addParameter(wifi_password);
     wifiManager.setMenu(menu, sizeof(menu) / sizeof(menu[0]));
 }
 
@@ -269,4 +279,26 @@ void saveConfigCallback() {
 void configModeCallback(const WiFiManager* /* myWiFiManager */) {
     WiFi.setTxPower(WIFI_POWER_8_5dBm);
     Serial.println("[CALLBACK] configModeCallback fired");
+}
+
+// Cleanup function to delete allocated WiFiManagerParameter objects
+void cleanupWiFiManagerParameters() {
+    delete ttn_app_eui;
+    delete ttn_dev_eui;
+    delete ttn_app_key;
+    delete calibration_air_value;
+    delete calibration_water_value;
+    delete sleep_time_hours;
+    delete wifi_ssid;
+    delete wifi_password;
+    
+    // Reset pointers to nullptr
+    ttn_app_eui = nullptr;
+    ttn_dev_eui = nullptr;
+    ttn_app_key = nullptr;
+    calibration_air_value = nullptr;
+    calibration_water_value = nullptr;
+    sleep_time_hours = nullptr;
+    wifi_ssid = nullptr;
+    wifi_password = nullptr;
 }

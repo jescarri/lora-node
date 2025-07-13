@@ -1,17 +1,18 @@
 #ifndef LORAWAN_SETTINGS_HPP
 #define LORAWAN_SETTINGS_HPP
 
-#include <Arduino.h>
-#include <Preferences.h>
+#include "Arduino.h"
+#include "lmic.h"
 
-// Settings functions
-String settings_get_string(const char* key);
-void settings_put_string(const char* key, const String& value);
+// Minimal lorawan_settings functions
+void loadSetings();
+void initMenu();
+void saveConfigCallback();
 void settings_clear();
-bool settings_has_key(const char* key);
-bool settings_get_bool(const char* key, bool defaultValue = false);
 
-// Global settings instance
-extern Preferences settings;
+// Global variables for testing
+extern char wifi_ssid_str[32];
+extern char wifi_password_str[64];
+extern CayenneLPP lpp;
 
 #endif // LORAWAN_SETTINGS_HPP 

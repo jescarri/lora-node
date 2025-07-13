@@ -38,11 +38,12 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     }
     
     // Convert data to string for JSON parsing
-    String jsonString = String((char*)data, dataLen);
+    // Use reinterpret_cast to convert uint8_t* to const char* safely
+    String jsonString = String(reinterpret_cast<const char*>(data), dataLen);
     Serial.print("Received JSON: "); Serial.println(jsonString);
     
     DynamicJsonDocument doc(512);
-    DeserializationError error = deserializeJson(doc, jsonString);
+    auto error = deserializeJson(doc, jsonString);
     
     if (error) {
         Serial.print("JSON parsing failed: "); Serial.println(error.c_str());
@@ -80,18 +81,18 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     }
     
     // Enable WiFi for download
-    WiFi.mode(WIFI_STA);
+    WiFiClass::mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
     
     // Wait for WiFi connection
     int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    while (WiFiClass::status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
         attempts++;
     }
     
-    if (WiFi.status() != WL_CONNECTED) {
+    if (WiFiClass::status() != WL_CONNECTED) {
         Serial.println("Failed to connect to WiFi");
         return false;
     }
@@ -105,7 +106,7 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     
     int httpCode = http.GET();
     if (httpCode != HTTP_CODE_OK) {
-        Serial.printf("HTTP GET failed, error: %s\n", http.errorToString(httpCode).c_str());
+        Serial.printf("HTTP GET failed, error: %s\n", HTTPClient::errorToString(httpCode).c_str());
         http.end();
         return false;
     }
@@ -147,11 +148,9 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     http.end();
     
     // Verify MD5 if provided
-    if (updateInfo.md5sum.length() > 0) {
-        if (!Update.setMD5(updateInfo.md5sum.c_str())) {
-            Serial.println("Failed to set MD5");
-            return false;
-        }
+    if (updateInfo.md5sum.length() > 0 && !Update.setMD5(updateInfo.md5sum.c_str())) {
+        Serial.println("Failed to set MD5");
+        return false;
     }
     
     // End update
@@ -171,7 +170,6 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo&) {
 #endif
 
 #ifndef UNIT_TEST
-#include <mbedtls/md5.h>
 bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5) {
     if (data == nullptr || dataLen == 0 || expectedMd5.length() == 0) {
         return false;
@@ -182,9 +180,9 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
     
     String calculatedMd5 = "";
     for (int i = 0; i < 16; i++) {
-        char hex[3];
-        sprintf(hex, "%02x", hash[i]);
-        calculatedMd5 += hex;
+        std::string hex(3, '\0');
+        snprintf(&hex[0], hex.size(), "%02x", hash[i]);
+        calculatedMd5 += hex.c_str();
     }
     
     Serial.print("Calculated MD5: "); Serial.println(calculatedMd5);
@@ -202,23 +200,23 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
     }
     unsigned char hash[16];
     mbedtls_md5(data, dataLen, hash);
-    char calculatedMd5[33];
+    std::string calculatedMd5(33, '\0');
     for (int i = 0; i < 16; i++) {
-        sprintf(&calculatedMd5[i * 2], "%02x", hash[i]);
+        snprintf(&calculatedMd5[i * 2], 3, "%02x", hash[i]);
     }
-    calculatedMd5[32] = '\0';
     return (expectedMd5.equalsIgnoreCase(calculatedMd5));
 }
 #endif
 
 void reportFirmwareVersion(CayenneLPP& lpp) {
-    // Use CayenneLPP generic sensor to report firmware version as float
-    float version = version::getFirmwareVersionFloat();
-    lpp.addGenericSensor(10, version);
+    // Use CayenneLPP generic sensor to report firmware version as integer
+    // Send the 3-digit version directly (e.g., 110 for v1.1.0)
+    int versionInt = version::getFirmwareVersionInt();
+    lpp.addGenericSensor(10, static_cast<float>(versionInt));
 }
 
-float getFirmwareVersionFloat() {
-    return version::getFirmwareVersionFloat();
+int getFirmwareVersionInt() {
+    return version::getFirmwareVersionInt();
 }
 
 #ifndef UNIT_TEST
@@ -227,18 +225,18 @@ bool testWifiConnection(const String& ssid, const String& password) {
         return false;
     }
     
-    WiFi.mode(WIFI_STA);
+    WiFiClass::mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
     
     // Try to connect for 10 seconds
     int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    while (WiFiClass::status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
         attempts++;
     }
     
-    bool connected = (WiFi.status() == WL_CONNECTED);
+    bool connected = (WiFiClass::status() == WL_CONNECTED);
     
     if (connected) {
         Serial.println("WiFi test connection successful");

@@ -23,7 +23,7 @@ constexpr int PinLmicDio1 = 33;
 constexpr int PinLmicDio2 = 32;
 
 // LoRaWAN / payload ----------------------------------------------------------
-constexpr int MaxPayloadSize = 55;  // Increased to accommodate firmware version
+constexpr int MaxPayloadSize = 200;  // Increased to accommodate OTA messages
 
 // Sensors --------------------------------------------------------------------
 constexpr int SoilSensorPin = 34;     // ADC1_CH6

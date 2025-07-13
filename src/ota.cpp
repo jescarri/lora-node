@@ -62,15 +62,39 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
         return false;
     }
 
-    // Check if all required fields are present
-    if (!doc.containsKey("url") || !doc.containsKey("md5sum") || !doc.containsKey("version")) {
-        Serial.println("Missing required fields in OTA message");
+    // Check if all required fields are present (support both full and abbreviated names)
+    String url, md5sum, version;
+    
+    if (doc.containsKey("url")) {
+        url = doc["url"].as<String>();
+    } else if (doc.containsKey("u")) {
+        url = doc["u"].as<String>();
+    } else {
+        Serial.println("Missing url field in OTA message");
+        return false;
+    }
+    
+    if (doc.containsKey("md5sum")) {
+        md5sum = doc["md5sum"].as<String>();
+    } else if (doc.containsKey("m")) {
+        md5sum = doc["m"].as<String>();
+    } else {
+        Serial.println("Missing md5sum field in OTA message");
+        return false;
+    }
+    
+    if (doc.containsKey("version")) {
+        version = doc["version"].as<String>();
+    } else if (doc.containsKey("v")) {
+        version = doc["v"].as<String>();
+    } else {
+        Serial.println("Missing version field in OTA message");
         return false;
     }
 
-    updateInfo.url = doc["url"].as<String>();
-    updateInfo.md5sum = doc["md5sum"].as<String>();
-    updateInfo.version = doc["version"].as<String>();
+    updateInfo.url = url;
+    updateInfo.md5sum = md5sum;
+    updateInfo.version = version;
     updateInfo.valid = true;
 
     return true;

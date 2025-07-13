@@ -34,11 +34,11 @@ WiFiManagerParameter* ttn_app_eui = nullptr;
 WiFiManagerParameter* ttn_dev_eui = nullptr;
 WiFiManagerParameter* ttn_app_key = nullptr;
 
-WiFiManagerParameter* calibration_air_value = nullptr;
+WiFiManagerParameter* calibration_air_value   = nullptr;
 WiFiManagerParameter* calibration_water_value = nullptr;
-WiFiManagerParameter* sleep_time_hours = nullptr;
-WiFiManagerParameter* wifi_ssid = nullptr;
-WiFiManagerParameter* wifi_password = nullptr;
+WiFiManagerParameter* sleep_time_hours        = nullptr;
+WiFiManagerParameter* wifi_ssid               = nullptr;
+WiFiManagerParameter* wifi_password           = nullptr;
 
 void loadSetings() {
     if (settings_has_key("app_eui")) {
@@ -123,7 +123,7 @@ void loadSetings() {
         safe_strncpy(sleep_time_hours_str, "0");
 #endif
     }
-    
+
     // Load WiFi settings
     if (settings_has_key("wifi_ssid")) {
 #ifdef UNIT_TEST
@@ -138,7 +138,7 @@ void loadSetings() {
         safe_strncpy(wifi_ssid_str, "");
 #endif
     }
-    
+
     if (settings_has_key("wifi_password")) {
 #ifdef UNIT_TEST
         safe_strncpy(wifi_password_str, settings_get_string("wifi_password").c_str());
@@ -160,62 +160,70 @@ void initMenu() {
     wifiManager.setRemoveDuplicateAPs(true);
     wifiManager.setSaveParamsCallback(saveConfigCallback);
     loadSetings();
-    ttn_app_eui = new WiFiManagerParameter("app_eui", "AppEUI lsb", 
+    ttn_app_eui = new WiFiManagerParameter("app_eui", "AppEUI lsb",
 #ifdef UNIT_TEST
-        char_ttn_app_eui.data()
+                                           char_ttn_app_eui.data()
 #else
-        char_ttn_app_eui
+                                           char_ttn_app_eui
 #endif
-        , MAX_LORAWAN_CONF_CHAR_LEN);
-    ttn_dev_eui = new WiFiManagerParameter("dev_eui", "DevEUI lsb", 
+                                               ,
+                                           MAX_LORAWAN_CONF_CHAR_LEN);
+    ttn_dev_eui = new WiFiManagerParameter("dev_eui", "DevEUI lsb",
 #ifdef UNIT_TEST
-        char_ttn_dev_eui.data()
+                                           char_ttn_dev_eui.data()
 #else
-        char_ttn_dev_eui
+                                           char_ttn_dev_eui
 #endif
-        , MAX_LORAWAN_CONF_CHAR_LEN);
-    ttn_app_key = new WiFiManagerParameter("app_key", "APP Key msb", 
+                                               ,
+                                           MAX_LORAWAN_CONF_CHAR_LEN);
+    ttn_app_key = new WiFiManagerParameter("app_key", "APP Key msb",
 #ifdef UNIT_TEST
-        char_ttn_app_key.data()
+                                           char_ttn_app_key.data()
 #else
-        char_ttn_app_key
+                                           char_ttn_app_key
 #endif
-        , MAX_LORAWAN_CONF_CHAR_LEN);
-    calibration_air_value = new WiFiManagerParameter("calibration_air_value", "Calibration Air Value", 
+                                               ,
+                                           MAX_LORAWAN_CONF_CHAR_LEN);
+    calibration_air_value = new WiFiManagerParameter("calibration_air_value", "Calibration Air Value",
 #ifdef UNIT_TEST
-        calibration_air_value_str.data()
+                                                     calibration_air_value_str.data()
 #else
-        calibration_air_value_str
+                                                     calibration_air_value_str
 #endif
-        , MAX_INT_STR_LEN);
-    calibration_water_value = new WiFiManagerParameter("calibration_water_value", "Calibration Water Value", 
+                                                         ,
+                                                     MAX_INT_STR_LEN);
+    calibration_water_value = new WiFiManagerParameter("calibration_water_value", "Calibration Water Value",
 #ifdef UNIT_TEST
-        calibration_water_value_str.data()
+                                                       calibration_water_value_str.data()
 #else
-        calibration_water_value_str
+                                                       calibration_water_value_str
 #endif
-        , MAX_INT_STR_LEN);
-    sleep_time_hours = new WiFiManagerParameter("sleep_time_hours", "Sleep Time in Hours", 
+                                                           ,
+                                                       MAX_INT_STR_LEN);
+    sleep_time_hours = new WiFiManagerParameter("sleep_time_hours", "Sleep Time in Hours",
 #ifdef UNIT_TEST
-        sleep_time_hours_str.data()
+                                                sleep_time_hours_str.data()
 #else
-        sleep_time_hours_str
+                                                sleep_time_hours_str
 #endif
-        , MAX_INT_STR_LEN);
-    wifi_ssid = new WiFiManagerParameter("wifi_ssid", "WiFi SSID", 
+                                                    ,
+                                                MAX_INT_STR_LEN);
+    wifi_ssid = new WiFiManagerParameter("wifi_ssid", "WiFi SSID",
 #ifdef UNIT_TEST
-        wifi_ssid_str
+                                         wifi_ssid_str
 #else
-        wifi_ssid_str
+                                         wifi_ssid_str
 #endif
-        , 32);
-    wifi_password = new WiFiManagerParameter("wifi_password", "WiFi Password", 
+                                         ,
+                                         32);
+    wifi_password = new WiFiManagerParameter("wifi_password", "WiFi Password",
 #ifdef UNIT_TEST
-        wifi_password_str
+                                             wifi_password_str
 #else
-        wifi_password_str
+                                             wifi_password_str
 #endif
-        , 64, "type=\"password\"");
+                                             ,
+                                             64, "type=\"password\"");
     wifiManager.addParameter(ttn_app_eui);
     wifiManager.addParameter(ttn_dev_eui);
     wifiManager.addParameter(ttn_app_key);
@@ -242,6 +250,16 @@ void startWebConf() {
 
 void saveConfigCallback() {
     Serial.println("Should save config");
+    
+    // Get current WiFi settings BEFORE saving them
+    String ssid     = wifi_ssid->getValue();
+    String password = wifi_password->getValue();
+    
+    // Get previous WiFi settings for comparison BEFORE saving new ones
+    String prev_ssid     = settings_get_string("wifi_ssid", "");
+    String prev_password = settings_get_string("wifi_password", "");
+    
+    // Save all settings
     settings_put_string("app_eui", ttn_app_eui->getValue());
     settings_put_string("dev_eui", ttn_dev_eui->getValue());
     settings_put_string("app_key", ttn_app_key->getValue());
@@ -249,31 +267,62 @@ void saveConfigCallback() {
     settings_put_string("c_air_v", calibration_air_value->getValue());
     settings_put_string("c_water_v", calibration_water_value->getValue());
     settings_put_string("sleep_hours", sleep_time_hours->getValue());
-    
+
     // Save WiFi settings
-    settings_put_string("wifi_ssid", wifi_ssid->getValue());
-    settings_put_string("wifi_password", wifi_password->getValue());
+    settings_put_string("wifi_ssid", ssid.c_str());
+    settings_put_string("wifi_password", password.c_str());
 
     settings_put_bool("ttn_otaa_config", true);
-    
-    // Test WiFi connection if SSID is provided
-    String ssid = wifi_ssid->getValue();
-    String password = wifi_password->getValue();
-    
+
+    Serial.print("SSID length: ");
+    Serial.println(ssid.length());
+
+    // Check if WiFi should be tested based on preferences and config changes
+    bool should_test_wifi = false;
+    bool wifi_tested_ok   = settings_get_bool("wifi_tested_ok", false);
+
+    Serial.print("Previous SSID: '");
+    Serial.print(prev_ssid);
+    Serial.println("'");
+    Serial.print("Current SSID: '");
+    Serial.print(ssid);
+    Serial.println("'");
+    Serial.print("WiFi tested OK: ");
+    Serial.println(wifi_tested_ok ? "true" : "false");
+
+    // Test WiFi if:
+    // 1. wifi_tested_ok is false/nil and SSID is provided
+    // 2. WiFi config has changed
     if (ssid.length() > 0) {
+        if (!wifi_tested_ok) {
+            should_test_wifi = true;
+            Serial.println("Testing WiFi: wifi_tested_ok is false");
+        } else if (ssid != prev_ssid || password != prev_password) {
+            should_test_wifi = true;
+            Serial.println("Testing WiFi: config changed");
+        } else {
+            Serial.println("Skipping WiFi test: config unchanged and previously tested OK");
+        }
+    } else {
+        Serial.println("Skipping WiFi test: no SSID provided");
+    }
+
+    if (should_test_wifi) {
         Serial.println("Testing WiFi connection...");
         if (testWifiConnection(ssid, password)) {
             Serial.println("WiFi test successful");
+            settings_put_bool("wifi_tested_ok", true);
             leds[0] = CRGB::Green;
         } else {
             Serial.println("WiFi test failed");
+            settings_put_bool("wifi_tested_ok", false);
             leds[0] = CRGB::Orange;
         }
     } else {
         leds[0] = CRGB::Green;
     }
-    
     FastLED.show();
+    wifiManager.startConfigPortal("lora-node");
 }
 
 void configModeCallback(const WiFiManager* /* myWiFiManager */) {
@@ -291,14 +340,13 @@ void cleanupWiFiManagerParameters() {
     delete sleep_time_hours;
     delete wifi_ssid;
     delete wifi_password;
-    
     // Reset pointers to nullptr
-    ttn_app_eui = nullptr;
-    ttn_dev_eui = nullptr;
-    ttn_app_key = nullptr;
-    calibration_air_value = nullptr;
+    ttn_app_eui             = nullptr;
+    ttn_dev_eui             = nullptr;
+    ttn_app_key             = nullptr;
+    calibration_air_value   = nullptr;
     calibration_water_value = nullptr;
-    sleep_time_hours = nullptr;
-    wifi_ssid = nullptr;
-    wifi_password = nullptr;
+    sleep_time_hours        = nullptr;
+    wifi_ssid               = nullptr;
+    wifi_password           = nullptr;
 }

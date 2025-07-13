@@ -2,7 +2,6 @@
 #include "WiFi.h"
 #include "driver/adc.h"
 
-
 #include <lmic.h>
 
 #include "esp_bt.h"
@@ -12,16 +11,17 @@
 #include "lorawan_settings.hpp"
 #include "menu.hpp"
 #include "version.hpp"
+#include "ota.hpp"
 #include <array>
 #include <Adafruit_MAX1704X.h>
 #include <FastLED.h>
 #include <Wire.h>
 #include <hal/hal.h>
 
-constexpr int VCC_ENA_PIN = 13;
-constexpr int START_WEB_CONFIG_PIN = 16;
-constexpr int NUM_LEDS = 1;
-constexpr int LED_DATA_PIN = 17;
+constexpr int VCC_ENA_PIN                   = 13;
+constexpr int START_WEB_CONFIG_PIN          = 16;
+constexpr int NUM_LEDS                      = 1;
+constexpr int LED_DATA_PIN                  = 17;
 constexpr unsigned long long uS_TO_S_FACTOR = 1000000ULL;
 
 lmic_t SETTINGS_LMIC;
@@ -53,20 +53,20 @@ const lmic_pinmap lmic_pins = {
 
 static constexpr std::array<gpio_num_t, 12> AUX_PINS = {
     /* LoRa radio (SX127x) */
-    GPIO_NUM_5,   // SS  (leave even if NC – harmless)
-    GPIO_NUM_18,  // SCK / NSS
-    GPIO_NUM_19,  // MISO
-    GPIO_NUM_23,  // MOSI
+    GPIO_NUM_5,         // SS  (leave even if NC – harmless)
+    GPIO_NUM_18,        // SCK / NSS
+    GPIO_NUM_19,        // MISO
+    GPIO_NUM_23,        // MOSI
 
-    GPIO_NUM_14,  // RESET
-    GPIO_NUM_26,  // DIO0
+    GPIO_NUM_14,        // RESET
+    GPIO_NUM_26,        // DIO0
     GPIO_NUM_27,
-    GPIO_NUM_33,  // DIO1
-    GPIO_NUM_32,  // DIO2
+    GPIO_NUM_33,        // DIO1
+    GPIO_NUM_32,        // DIO2
     /* I²C battery gauge */
-    GPIO_NUM_21,  // SDA
-    GPIO_NUM_22,  // SCL
-    GPIO_NUM_4    // MAX17048 ALRT
+    GPIO_NUM_21,        // SDA
+    GPIO_NUM_22,        // SCL
+    GPIO_NUM_4          // MAX17048 ALRT
 };
 
 // Schedule TX every this many seconds
@@ -95,10 +95,10 @@ void setup() {
     Wire.begin(21, 22);
     delay(100);
     Serial.begin(115200);
-    
+
     // Print firmware version information at startup
     version::printFirmwareVersion();
-    
+
     adc_power_acquire();
     randomSeed(analogRead(0));
     // Init and Wake the Lipo Cel:
@@ -129,6 +129,7 @@ void setup() {
 
     if ((startWebConfig == true) || (!otaa_cfg)) {
         setCpuFrequencyMhz(80);
+        Serial.updateBaudRate(115200);
         WiFi.disconnect(false);
         resetLmic();
         startWebConf();
@@ -161,6 +162,17 @@ void loop() {
     os_runloop_once();
     const bool timeCriticalJobs =
         os_queryTimeCriticalJobs(ms2osticksRound((TX_INTERVAL * 1000)));
+
+    // Check if OTA is in progress - prevent sleep during OTA
+    if (isOtaInProgress()) {
+        Serial.println("OTA in progress - preventing deep sleep");
+        if (lastPrintTime + 1000 < millis()) {
+            Serial.println("Waiting for OTA to complete...");
+            PrintRuntime();
+            lastPrintTime = millis();
+        }
+        return;        // Don't proceed with sleep logic
+    }
 
     if (!timeCriticalJobs && enableSleep_ == true &&
         !(LMIC.opmode & OP_TXRXPEND)) {

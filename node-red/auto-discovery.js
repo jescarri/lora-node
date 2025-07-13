@@ -1,3 +1,12 @@
+// --- Firmware Version Sensor ---
+// Get firmware version from generic_10, decode as float (divide by 100), fallback to 0.0.1 if missing
+let fw_version_raw = msg.payload.uplink_message.decoded_payload.generic_10;
+let fw_version = '0.0.1';
+if (fw_version_raw !== undefined && fw_version_raw !== null) {
+    // Convert to string with 2 decimals (e.g., 110 -> '1.10')
+    fw_version = (fw_version_raw / 100).toFixed(2);
+}
+
 if (msg.payload == "") {
     return null
 
@@ -21,6 +30,7 @@ var location_discovery = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_location",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -62,6 +72,7 @@ var battery_charge = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_battery_charge",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -89,6 +100,7 @@ var soil_moisture = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_soil_moisture_percentage",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -115,6 +127,7 @@ var battery_voltage = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_battery_voltage",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -141,6 +154,7 @@ var sleep_time = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_deep_sleep_duration",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -167,6 +181,7 @@ var run_time = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_run_time_duration",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -192,6 +207,7 @@ var rx_time = {
         unique_id: msg.payload.end_device_ids.dev_eui + "_last_rx_payload",
         device: {
             hw_version: "v1.0.0",
+            sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",
             name: msg.payload.end_device_ids.device_id,
@@ -219,23 +235,13 @@ var debug_data = {
     topic: "lora/debug/" + msg.payload.end_device_ids.application_ids.application_id + "/" + msg.payload.end_device_ids.device_id + "/log",
 }
 
-// --- Firmware Version Sensor ---
-// Get firmware version from generic_10, convert to semantic version format
-let fw_version_raw = msg.payload.uplink_message.decoded_payload.generic_10;
-let fw_version = 'v0.0.1';
-if (fw_version_raw !== undefined && fw_version_raw !== null) {
-    // Convert to semantic version format (e.g., 100 -> v1.0.0, 112 -> v1.1.2)
-    const major = Math.floor(fw_version_raw / 100);
-    const minor = Math.floor((fw_version_raw % 100) / 10);
-    const patch = fw_version_raw % 10;
-    fw_version = `v${major}.${minor}.${patch}`;
-}
+
 
 var firmware_version_sensor = {
     payload: {
         name: "firmware_version",
         state_topic: "ttn/soil-conditions/devices/" + msg.payload.end_device_ids.device_id + "/up",
-        value_template: "{% set fw_raw = value_json.uplink_message.decoded_payload.generic_10 | default(1) %}{% set major = (fw_raw / 100) | int %}{% set minor = ((fw_raw % 100) / 10) | int %}{% set patch = fw_raw % 10 %}v{{ major }}.{{ minor }}.{{ patch }}",
+        value_template: "{{ value_json.uplink_message.decoded_payload.generic_10 | default(1) | float / 100 | round(2) }}",
         platform: "sensor",
         force_update: true,
         state_class: "measurement",
@@ -247,7 +253,7 @@ var firmware_version_sensor = {
         object_id: msg.payload.end_device_ids.device_id,
         unique_id: msg.payload.end_device_ids.dev_eui + "_firmware_version",
         device: {
-            hw_version: 1.0,
+            hw_version: "v1.0.0",
             sw_version: fw_version,
             identifiers: msg.payload.end_device_ids.dev_eui,
             manufacturer: "VA7RCV",

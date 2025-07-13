@@ -1,4 +1,7 @@
-name: SonarQube
+# LEGACY WORKFLOW - Replaced by ci-cd.yml
+# This workflow is kept for reference but the new comprehensive CI/CD pipeline
+# is in .github/workflows/ci-cd.yml
+name: Legacy SonarQube (Deprecated)
 on:
   push:
     branches:

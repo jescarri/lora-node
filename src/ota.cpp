@@ -1,5 +1,6 @@
 #include "ota.hpp"
 #include "lorawan_settings.hpp"
+#include "version.hpp"
 #include <cstring>
 #ifndef UNIT_TEST
 #include <mbedtls/md5.h>
@@ -212,7 +213,12 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
 
 void reportFirmwareVersion(CayenneLPP& lpp) {
     // Use CayenneLPP generic sensor to report firmware version as float
-    lpp.addGenericSensor(10, FIRMWARE_VERSION_FLOAT);
+    float version = version::getFirmwareVersionFloat();
+    lpp.addGenericSensor(10, version);
+}
+
+float getFirmwareVersionFloat() {
+    return version::getFirmwareVersionFloat();
 }
 
 #ifndef UNIT_TEST

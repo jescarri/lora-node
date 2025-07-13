@@ -11,6 +11,7 @@
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
 #include "menu.hpp"
+#include "version.hpp"
 #include <array>
 #include <Adafruit_MAX1704X.h>
 #include <FastLED.h>
@@ -94,6 +95,10 @@ void setup() {
     Wire.begin(21, 22);
     delay(100);
     Serial.begin(115200);
+    
+    // Print firmware version information at startup
+    version::printFirmwareVersion();
+    
     adc_power_acquire();
     randomSeed(analogRead(0));
     // Init and Wake the Lipo Cel:

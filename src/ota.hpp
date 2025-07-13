@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include "config.hpp"
 #ifndef UNIT_TEST
 #include <WiFi.h>
 #include <HTTPClient.h>
@@ -26,10 +27,7 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
 void reportFirmwareVersion(CayenneLPP& lpp);
 bool testWifiConnection(const String& ssid, const String& password);
 
-// Firmware version reporting
-#ifndef FIRMWARE_VERSION
-#define FIRMWARE_VERSION 100
-#endif
-constexpr float FIRMWARE_VERSION_FLOAT = FIRMWARE_VERSION;
+// Firmware version reporting - will be resolved at runtime
+float getFirmwareVersionFloat();
 
-#endif // OTA_HPP_ 
+#endif        // OTA_HPP_

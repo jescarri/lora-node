@@ -33,5 +33,14 @@ constexpr int WaterValue    = 380;    // Wet calibration value
 // Misc -----------------------------------------------------------------------
 constexpr int MaxSensorRead = 1;
 
+// Firmware Version -----------------------------------------------------------
+// The FIRMWARE_VERSION is set by the CI/CD pipeline during compilation
+// Format: X.Y (e.g., 1.0, 1.1, 2.0)
+#ifdef FIRMWARE_VERSION
+    constexpr float FirmwareVersionFloat = FIRMWARE_VERSION;
+#else
+    constexpr float FirmwareVersionFloat = 0.0f; // Development build
+#endif
+
 } // namespace config
 

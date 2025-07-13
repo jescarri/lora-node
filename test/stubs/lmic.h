@@ -1,86 +1,86 @@
-#pragma once
-#include <stdint.h>
-#include <stddef.h>
+#ifndef LMIC_H
+#define LMIC_H
 
-// Minimal stub types for native build
-typedef int ev_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef unsigned char u1_t;
+typedef unsigned int  u4_t;
+typedef unsigned int  devaddr_t;
 typedef struct { int dummy; } osjob_t;
-typedef struct { int seqnoUp, globalDutyRate, globalDutyAvail, txend, txChnl, opmode; uint8_t dataLen, dataBeg; } lmic_t;
+typedef struct {
+    int seqnoUp, globalDutyRate, globalDutyAvail, txend, txChnl, opmode;
+    uint8_t dataLen, dataBeg;
+    uint8_t txrxFlags;
+    uint8_t frame[256];
+} lmic_t;
 
-typedef uint8_t u1_t;
-typedef uint32_t u4_t;
-typedef uint32_t devaddr_t;
+typedef struct {
+    int nss;
+    int rxtx;
+    int rst;
+    int dio[3];
+    int rxtx_rx_active;
+    int spi_freq;
+} lmic_pinmap;
 
-typedef struct { int dummy; } lmic_pinmap;
+typedef enum {
+    EV_SCAN_TIMEOUT,
+    EV_BEACON_FOUND,
+    EV_BEACON_MISSED,
+    EV_BEACON_TRACKED,
+    EV_JOINING,
+    EV_JOINED,
+    EV_JOIN_FAILED,
+    EV_REJOIN_FAILED,
+    EV_TXCOMPLETE,
+    EV_LOST_TSYNC,
+    EV_RESET,
+    EV_RXCOMPLETE,
+    EV_LINK_DEAD,
+    EV_LINK_ALIVE,
+    EV_TXSTART,
+    EV_TXCANCELED,
+    EV_RXSTART,
+    EV_JOIN_TXCOMPLETE
+} ev_t;
 
-// Global LMIC instance for tests - declare as extern
-extern lmic_t LMIC;
+#define OP_NONE      0x0000
+#define OP_SCAN      0x0001
+#define OP_TRACK     0x0002
+#define OP_JOINING   0x0004
+#define OP_TXDATA    0x0008
+#define OP_POLL      0x0010
+#define OP_REJOIN    0x0020
+#define OP_SHUTDOWN  0x0040
+#define OP_TXRXPEND  0x0080
+#define OP_RNDTX     0x0100
+#define OP_PINGINI   0x0200
+#define OP_PINGABLE  0x0400
+#define OP_NEXTCHNL  0x0800
+#define OP_LINKDEAD  0x1000
+#define OP_TESTMODE  0x2000
+#define OP_UNJOIN    0x4000
 
-// Remove or comment out duplicate globals to avoid redefinition
-// inline lmic_t SETTINGS_LMIC{};
-// inline volatile bool enableSleep_ = true;
-// inline bool maxLipoFound = false;
-
-// Provide missing constants
-#define LMIC_UNUSED_PIN -1
-
-// Provide stub for LoraWANDebug with correct signature
-static inline void LoraWANDebug(const lmic_t&) {}
-
-// Provide other minimal stubs as needed
-static inline void LMIC_reset() {}
-static inline void os_init() {}
-static inline void LMIC_selectSubBand(int) {}
-static inline void LMIC_setLinkCheckMode(int) {}
-static inline void LMIC_shutdown() {}
-static inline int ms2osticksRound(int x) { return x; }
-static inline int os_queryTimeCriticalJobs(int) { return 0; }
-static inline int osticks2ms(int x) { return x; }
-static inline int os_getTime() { return 0; }
-static inline void randomSeed(int) {}
-static inline int millis() { return 0; }
-static inline void LMIC_getSessionKeys(u4_t*, devaddr_t*, u1_t*, u1_t*) {}
-static inline void LMIC_setTxData2(uint8_t, const uint8_t*, uint8_t, uint8_t) {}
-
-#define OP_NONE       0x00
-#define OP_TXRXPEND   0x01
-#define OP_SCAN       0x02
-#define OP_TRACK      0x04
-#define OP_JOINING    0x08
-#define OP_TXDATA     0x10
-#define OP_POLL       0x20
-#define OP_REJOIN     0x40
-#define OP_SHUTDOWN   0x80
-#define OP_RNDTX      0x100
-#define OP_PINGINI    0x200
-#define OP_PINGABLE   0x400
-#define OP_NEXTCHNL   0x800
-#define OP_LINKDEAD   0x1000
-#define OP_TESTMODE   0x2000
-#define OP_UNJOIN     0x4000
-#define TXRX_PORT     0x80
-
-#define ARDUINO_LMIC_VERSION 0x01020304
+#define ARDUINO_LMIC_VERSION 0x04010000
 #define ARDUINO_LMIC_VERSION_GET_MAJOR(v) (((v) >> 24) & 0xFF)
 #define ARDUINO_LMIC_VERSION_GET_MINOR(v) (((v) >> 16) & 0xFF)
 #define ARDUINO_LMIC_VERSION_GET_PATCH(v) (((v) >> 8) & 0xFF)
-#define ARDUINO_LMIC_VERSION_GET_LOCAL(v) ((v)&0xFF)
+#define ARDUINO_LMIC_VERSION_GET_LOCAL(v) ((v) & 0xFF)
 
-#define EV_SCAN_TIMEOUT    1
-#define EV_BEACON_FOUND    2
-#define EV_BEACON_MISSED   3
-#define EV_BEACON_TRACKED  4
-#define EV_JOINING         5
-#define EV_JOINED          6
-#define EV_TXCOMPLETE      7
-#define EV_JOIN_FAILED     8
-#define EV_REJOIN_FAILED   9
-#define EV_LOST_TSYNC      10
-#define EV_RESET           11
-#define EV_RXCOMPLETE      12
-#define EV_LINK_DEAD       13
-#define EV_LINK_ALIVE      14
-#define EV_TXSTART         15
-#define EV_TXCANCELED      16
-#define EV_RXSTART         17
-#define EV_JOIN_TXCOMPLETE 18
+#define TXRX_PORT 0x01
+
+#ifdef __cplusplus
+}
+// Inline C++ stubs for test linkage
+inline unsigned long os_getTime() { return 0; }
+inline void LMIC_setLinkCheckMode(int) {}
+inline void LMIC_getSessionKeys(unsigned int*, unsigned int*, unsigned char*, unsigned char*) {}
+inline void LMIC_setTxData2(unsigned char, const unsigned char*, unsigned char, unsigned char) {}
+inline void handleDownlinkMessage(unsigned char*, unsigned char) {}
+inline void reportFirmwareVersion(void*) {}
+inline void LoraWANDebug(const lmic_t&) {}
+#endif
+
+#endif // LMIC_H

@@ -10,10 +10,11 @@
 class WiFiManagerParameter {
 public:
     WiFiManagerParameter(const char * /*id*/, const char * /*placeholder*/,
-                         char *value, int /*length*/)
-        : value_{value} {}
+                        char * /*value*/, int /*length*/) {}
+    WiFiManagerParameter(const char * /*id*/, const char * /*placeholder*/,
+                        char * /*value*/, int /*length*/, const char * /*custom*/) {}
 
-    const char *getValue() const { return value_; }
+    const char *getValue() const { return nullptr; }
 
 private:
     char *value_;
@@ -33,6 +34,10 @@ public:
 
     void setConfigPortalTimeout(int /*seconds*/) {}
 
-    bool startConfigPortal(const char * /*ssid*/) { return true; }
+    bool startConfigPortal(const char* apName, const char* password = nullptr) { return true; }
+    void setAPCallback(void (*callback)(WiFiManager*)) {}
+    void setBreakAfterConfig(bool shouldBreak) {}
+    void resetSettings() {}
+    void setCustomMenuHTML_P(const char* html) {}
 };
 

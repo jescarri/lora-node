@@ -1,75 +1,83 @@
-#pragma once
+#ifndef PREFERENCES_H
+#define PREFERENCES_H
+
+#include <Arduino.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <cstdint>
-#include <variant>
 
 class Preferences {
+private:
+    std::unordered_map<std::string, std::string> stringStore;
+    std::unordered_map<std::string, long> longStore;
+    std::unordered_map<std::string, std::vector<uint8_t>> bytesStore;
+
 public:
-    Preferences() = default;
-
-    void begin(const char * /*ns*/, bool /*ro*/) {
-        // For the purposes of unit tests we reset all stored values on every
-        // begin() call to emulate a fresh namespace.
-        store_.clear();
+    bool begin(const char* name, bool readOnly = false) { return true; }
+    void end() {}
+    
+    String getString(const char* key, const String& defaultValue = "") { 
+        auto it = stringStore.find(key);
+        return (it != stringStore.end()) ? String(it->second.c_str()) : defaultValue;
     }
-
-    bool isKey(const char *key) {
-        return store_.count(key) != 0;
+    void putString(const char* key, const String& value) {
+        stringStore[key] = value.c_str();
     }
-
-    size_t putBytes(const char *key, const void *value, size_t len) {
-        const uint8_t *ptr = static_cast<const uint8_t *>(value);
-        store_[key] = std::vector<uint8_t>(ptr, ptr + len);
+    
+    bool getBool(const char* key, bool defaultValue = false) { return defaultValue; }
+    void putBool(const char* key, bool value) {}
+    
+    int getInt(const char* key, int defaultValue = 0) { return defaultValue; }
+    void putInt(const char* key, int value) {}
+    
+    long getLong(const char* key, long defaultValue = 0) {
+        auto it = longStore.find(key);
+        return (it != longStore.end()) ? it->second : defaultValue;
+    }
+    void putLong(const char* key, long value) {
+        longStore[key] = value;
+    }
+    
+    bool isKey(const char* key) {
+        return stringStore.find(key) != stringStore.end() ||
+               longStore.find(key) != longStore.end() ||
+               bytesStore.find(key) != bytesStore.end();
+    }
+    
+    size_t putBytes(const char* key, const void* value, size_t len) {
+        const uint8_t* data = static_cast<const uint8_t*>(value);
+        bytesStore[key] = std::vector<uint8_t>(data, data + len);
         return len;
     }
-
-    size_t getBytesLength(const char *key) {
-        if (!isKey(key)) return 0;
-        return std::get<std::vector<uint8_t>>(store_[key]).size();
+    
+    size_t getBytesLength(const char* key) {
+        auto it = bytesStore.find(key);
+        return (it != bytesStore.end()) ? it->second.size() : 0;
     }
-
-    size_t getBytes(const char *key, void *buf, size_t len) {
-        if (!isKey(key)) return 0;
-        auto &vec = std::get<std::vector<uint8_t>>(store_[key]);
-        size_t n = std::min(len, vec.size());
-        std::copy(vec.begin(), vec.begin() + n, static_cast<uint8_t *>(buf));
-        return n;
+    
+    size_t getBytes(const char* key, void* buf, size_t len) {
+        auto it = bytesStore.find(key);
+        if (it == bytesStore.end()) return 0;
+        
+        size_t copyLen = std::min(len, it->second.size());
+        std::copy(it->second.begin(), it->second.begin() + copyLen, 
+                  static_cast<uint8_t*>(buf));
+        return copyLen;
     }
-
-    void remove(const char *key) {
-        store_.erase(key);
+    
+    void remove(const char* key) {
+        stringStore.erase(key);
+        longStore.erase(key);
+        bytesStore.erase(key);
     }
-
-    void putLong(const char *key, long value) {
-        store_[key] = static_cast<long long>(value);
+    
+    void clear() {
+        stringStore.clear();
+        longStore.clear();
+        bytesStore.clear();
     }
-
-    long getLong(const char *key, long def = 0) {
-        if (!isKey(key)) return def;
-        return static_cast<long>(std::get<long long>(store_[key]));
-    }
-
-    void putString(const char *key, const char *value) {
-        store_[key] = std::string(value);
-    }
-
-    String getString(const char *key) {
-        if (!isKey(key)) return String();
-        return String(std::get<std::string>(store_[key]));
-    }
-
-    void putBool(const char *key, bool value) {
-        store_[key] = value;
-    }
-
-    bool getBool(const char *key, bool def = false) {
-        if (!isKey(key)) return def;
-        return std::get<bool>(store_[key]);
-    }
-
-private:
-    using Variant = std::variant<std::vector<uint8_t>, long long, std::string, bool>;
-    std::unordered_map<std::string, Variant> store_;
+    
+    bool hasKey(const char* key) { return isKey(key); }
 };
+
+#endif // PREFERENCES_H

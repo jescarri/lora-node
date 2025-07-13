@@ -17,5 +17,6 @@ void configModeCallback(WiFiManager *myWiFiManager);
 
 void initMenu();
 void startWebConf();
+void cleanupWiFiManagerParameters();
 
 #endif

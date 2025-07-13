@@ -2,6 +2,7 @@
 #include "lorawan.hpp"
 #include "lorawan_settings.hpp"
 #include "utils.hpp"
+#include "ota.hpp"
 #include <cstring>
 #include <cctype>
 #include "lorawan_settings.hpp"
@@ -179,11 +180,18 @@ void onEvent(ev_t ev) {
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
             // Check if downlink was received
             if (LMIC.dataLen != 0 || LMIC.dataBeg != 0) {
-                // Downlink data received, could be processed here
-                // uint8_t fPort = 0;
-                // if (LMIC.txrxFlags & TXRX_PORT) {
-                //     fPort = LMIC.frame[LMIC.dataBeg - 1];
-                // }
+                // Downlink data received, process OTA update if present
+                uint8_t fPort = 0;
+                if (LMIC.txrxFlags & TXRX_PORT) {
+                    fPort = LMIC.frame[LMIC.dataBeg - 1];
+                }
+                
+                // Handle OTA update messages on port 1
+                if (fPort == 1) {
+                    uint8_t* downlinkData = &LMIC.frame[LMIC.dataBeg];
+                    uint8_t downlinkLen = LMIC.dataLen;
+                    handleDownlinkMessage(downlinkData, downlinkLen);
+                }
             }
             enableSleep_ = true;
             break;
@@ -243,6 +251,7 @@ void do_send(osjob_t* /* j */) {
     lpp.addGenericSensor(7, static_cast<float>(get_calibration_water_value()));
     lpp.addGenericSensor(8, static_cast<float>(get_sleep_time_seconds()));
     lpp.addGenericSensor(9, static_cast<float>(get_previous_runtime()));
+    reportFirmwareVersion(lpp);
 
     // Check if there is not a current TX/RX job running
     Serial.println("do_send");

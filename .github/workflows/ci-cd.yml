@@ -1,0 +1,249 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '[0-9]{3}'  # Matches only 3-digit integers like 100, 110, 112, etc.
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
+  PLATFORMIO_CACHE_DIR: ~/.platformio/.cache
+
+jobs:
+  # Stage 1: Branch Development Pipeline
+  branch-pipeline:
+    name: Branch Pipeline (Unit Test + Compile + Coverage + SonarQube)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ${{ env.PLATFORMIO_CACHE_DIR }}
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade platformio
+          pip install gcovr==7.2
+          sudo apt-get install build-essential
+
+      - name: Run unit tests (native)
+        run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
+
+      - name: Compile project
+        run: pio run
+
+      - name: Generate Compilation DB
+        run: pio run -t compiledb
+
+      - name: Generate coverage report
+        run: |
+          gcovr \
+            --root . \
+            --exclude '\.pio/libdeps/' \
+            --exclude 'tests/.*' \
+            --sonarqube \
+            --output coverage.xml
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            --define sonar.cfamily.compile-commands="compile_commands.json"
+            --define sonar.coverageReportPaths="coverage.xml"
+
+  # Stage 2: Main Branch Pipeline
+  main-pipeline:
+    name: Main Pipeline (Unit Test + Compile + Coverage + SonarQube)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ${{ env.PLATFORMIO_CACHE_DIR }}
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade platformio
+          pip install gcovr==7.2
+          sudo apt-get install build-essential
+
+      - name: Run unit tests (native)
+        run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
+
+      - name: Compile project
+        run: pio run
+
+      - name: Generate Compilation DB
+        run: pio run -t compiledb
+
+      - name: Generate coverage report
+        run: |
+          gcovr \
+            --root . \
+            --exclude '\.pio/libdeps/' \
+            --exclude 'tests/.*' \
+            --sonarqube \
+            --output coverage.xml
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            --define sonar.cfamily.compile-commands="compile_commands.json"
+            --define sonar.coverageReportPaths="coverage.xml"
+
+  # Stage 3: Release Pipeline
+  release-pipeline:
+    name: Release Pipeline (Tag Validation + Build + Artifacts)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate tag format
+        id: validate-tag
+        run: |
+          # Extract tag name without 'refs/tags/' prefix
+          TAG_NAME="${GITHUB_REF#refs/tags/}"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          
+          # Check if tag starts with 'v' (invalid)
+          if [[ "$TAG_NAME" == v* ]]; then
+            echo "❌ Error: Tag '$TAG_NAME' starts with 'v'. Tags must be 3-digit integers like '100', '110', '112', etc."
+            echo "Valid examples: 100 (v1.0.0), 110 (v1.1.0), 112 (v1.1.2)"
+            echo "Invalid examples: v100, 1.0, 1.1, 1000, 99"
+            exit 1
+          fi
+          
+          # Check if tag matches 3-digit integer pattern
+          if [[ "$TAG_NAME" =~ ^[0-9]{3}$ ]]; then
+            echo "✅ Tag '$TAG_NAME' is a valid 3-digit integer"
+            echo "firmware_version=$TAG_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Error: Tag '$TAG_NAME' is not a valid 3-digit integer"
+            echo "Valid format: XXX where X are numbers (e.g., 100, 110, 112)"
+            echo "Invalid examples: 1.0, 1.1, 1000, 99, v100"
+            exit 1
+          fi
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ${{ env.PLATFORMIO_CACHE_DIR }}
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade platformio
+          sudo apt-get install build-essential
+
+      - name: Run unit tests (native)
+        run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
+
+      - name: Compile with firmware version
+        run: |
+          pio run --build-flag="-D FIRMWARE_VERSION=${{ steps.validate-tag.outputs.firmware_version }}"
+
+      - name: Create release artifacts
+        run: |
+          mkdir -p artifacts
+          cp .pio/build/ttgo-lora32-v1/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
+          cp .pio/build/ttgo-lora32-v1/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
+          cp .pio/build/ttgo-lora32-v1/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
+          
+          # Create a manifest file with build info
+          cat > artifacts/build-info-${{ steps.validate-tag.outputs.tag_name }}.json << EOF
+          {
+            "version": "${{ steps.validate-tag.outputs.tag_name }}",
+            "build_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "files": {
+              "firmware": "firmware-${{ steps.validate-tag.outputs.tag_name }}.bin",
+              "elf": "firmware-${{ steps.validate-tag.outputs.tag_name }}.elf",
+              "partitions": "partitions-${{ steps.validate-tag.outputs.tag_name }}.bin"
+            }
+          }
+          EOF
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ steps.validate-tag.outputs.tag_name }}
+          path: artifacts/
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.validate-tag.outputs.tag_name }}
+          name: Release ${{ steps.validate-tag.outputs.tag_name }}
+          body: |
+            ## Firmware Release ${{ steps.validate-tag.outputs.tag_name }}
+            
+            ### Build Information
+            - **Version**: ${{ steps.validate-tag.outputs.tag_name }}
+            - **Build Date**: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+            - **Commit**: ${{ github.sha }}
+            
+            ### Artifacts
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.bin` - Binary firmware file
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.elf` - ELF debug file
+            - `partitions-${{ steps.validate-tag.outputs.tag_name }}.bin` - Partition table
+            - `build-info-${{ steps.validate-tag.outputs.tag_name }}.json` - Build metadata
+            
+            ### Installation
+            Use the firmware binary file with your preferred ESP32 flashing tool.
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

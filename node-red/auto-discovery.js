@@ -1,10 +1,13 @@
 // --- Firmware Version Sensor ---
-// Get firmware version from generic_10, decode as float (divide by 100), fallback to 0.0.1 if missing
+// Get firmware version from generic_10, convert 3-digit integer to semantic version, fallback to 0.0.1 if missing
 let fw_version_raw = msg.payload.uplink_message.decoded_payload.generic_10;
-let fw_version = '0.0.1';
+let fw_version = 'v0.0.1';
 if (fw_version_raw !== undefined && fw_version_raw !== null) {
-    // Convert to string with 2 decimals (e.g., 110 -> '1.10')
-    fw_version = (fw_version_raw / 100).toFixed(2);
+    // Convert 3-digit integer to semantic version (e.g., 200 -> 'v2.0.0', 110 -> 'v1.1.0')
+    const major = Math.floor(fw_version_raw / 100);
+    const minor = Math.floor((fw_version_raw % 100) / 10);
+    const patch = fw_version_raw % 10;
+    fw_version = `v${major}.${minor}.${patch}`;
 }
 
 if (msg.payload == "") {
@@ -241,7 +244,7 @@ var firmware_version_sensor = {
     payload: {
         name: "firmware_version",
         state_topic: "ttn/soil-conditions/devices/" + msg.payload.end_device_ids.device_id + "/up",
-        value_template: "{{ value_json.uplink_message.decoded_payload.generic_10 | default(1) | float / 100 | round(2) }}",
+        value_template: "{% set fw_raw = value_json.uplink_message.decoded_payload.generic_10 | default(1) | int %}{% set major = (fw_raw / 100) | int %}{% set minor = ((fw_raw % 100) / 10) | int %}{% set patch = fw_raw % 10 %}v{{ major }}.{{ minor }}.{{ patch }}",
         platform: "sensor",
         force_update: true,
         state_class: "measurement",

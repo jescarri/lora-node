@@ -138,6 +138,9 @@ jobs:
     name: Release Pipeline (Tag Validation + Build + Artifacts)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

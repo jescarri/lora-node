@@ -190,7 +190,7 @@ void onEvent(ev_t ev) {
                 if (fPort == 1) {
                     uint8_t* downlinkData = &LMIC.frame[LMIC.dataBeg];
                     uint8_t downlinkLen = LMIC.dataLen;
-                    handleDownlinkMessage(downlinkData, downlinkLen);
+                    handleDownlinkMessage(downlinkData, downlinkLen, fPort);
                 }
             }
             enableSleep_ = true;

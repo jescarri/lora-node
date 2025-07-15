@@ -14,14 +14,27 @@ OtaChunkBuffer ota_chunk_buffer;
 // Update handleOtaChunk to use ota_chunk_buffer.addChunk, isComplete, and getJsonString
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     int idx = fport - 1;
-    if (idx < 0 || idx >= OTA_MAX_CHUNKS) return;
-    if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) return;
-
+    Serial.printf("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\n", fport, idx, dataLen);
+    Serial.print("[OTA] Chunk data: ");
+    for (int i = 0; i < dataLen; ++i) Serial.printf("%02X ", data[i]);
+    Serial.println();
+    if (idx < 0 || idx >= OTA_MAX_CHUNKS) {
+        Serial.printf("[OTA] Invalid chunk index: %d\n", idx);
+        return;
+    }
+    if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) {
+        Serial.printf("[OTA] Failed to add chunk idx=%d len=%d\n", idx, dataLen);
+        return;
+    }
+    Serial.printf("[OTA] Chunk %d added. Checking completeness...\n", idx);
     if (ota_chunk_buffer.isComplete()) {
+        Serial.println("[OTA] All chunks received. Attempting reassembly and JSON parse...");
         String json = ota_chunk_buffer.getJsonString();
+        Serial.printf("[OTA] Reassembled JSON (%d bytes): %s\n", json.length(), json.c_str());
         DynamicJsonDocument doc(512);
         auto error = deserializeJson(doc, json);
         if (!error) {
+            Serial.println("[OTA] JSON parsed successfully. Triggering firmware update.");
             OtaUpdateInfo updateInfo;
             if (parseOtaMessage((const uint8_t*)json.c_str(), json.length(), updateInfo)) {
                 setOtaInProgress(true);
@@ -29,14 +42,18 @@ void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
                 setOtaInProgress(false);
                 ota_chunk_buffer.reset();
             }
+        } else {
+            Serial.printf("[OTA] JSON parse failed: %s\n", error.c_str());
         }
         // else: wait for more chunks or reset on fatal error
+    } else {
+        Serial.println("[OTA] Waiting for more chunks...");
     }
 }
 
 // Process OTA update - attempts JSON parsing and handles the update
 bool processOtaUpdate() {
-    if (ota_chunk_buffer.total_bytes == 0) {
+    if (!ota_chunk_buffer.isComplete()) {
         return false;
     }
     
@@ -496,4 +513,30 @@ void setOtaInProgress(bool inProgress) {
 
 bool isOtaInProgress() {
     return ota_in_progress;
+}
+
+// --- OtaChunkBuffer methods for chunked OTA reassembly ---
+bool OtaChunkBuffer::addChunk(int chunk_index, const uint8_t* data, int data_len) {
+    if (chunk_index < 0 || chunk_index >= OTA_MAX_CHUNKS) return false;
+    if (data_len > OTA_CHUNK_SIZE) return false;
+    memcpy(decoded_chunks[chunk_index], data, data_len);
+    chunk_lens[chunk_index] = data_len;
+    received[chunk_index] = true;
+    if (chunk_index > max_chunk_seen) max_chunk_seen = chunk_index;
+    return true;
+}
+
+bool OtaChunkBuffer::isComplete() const {
+    for (int i = 0; i <= max_chunk_seen; ++i) {
+        if (!received[i]) return false;
+    }
+    return true;
+}
+
+String OtaChunkBuffer::getJsonString() const {
+    String out;
+    for (int i = 0; i <= max_chunk_seen; ++i) {
+        out += String((const char*)decoded_chunks[i], chunk_lens[i]);
+    }
+    return out;
 }

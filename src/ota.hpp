@@ -36,59 +36,19 @@ extern volatile bool ota_in_progress;
 
 // New OTA chunk buffer - stores raw bytes
 struct OtaChunkBuffer {
-    uint8_t buffer[OTA_MAX_BUFFER_SIZE];
+    uint8_t decoded_chunks[OTA_MAX_CHUNKS][OTA_CHUNK_SIZE];
+    int chunk_lens[OTA_MAX_CHUNKS];
     bool received[OTA_MAX_CHUNKS];
-    int total_bytes = 0;
     int max_chunk_seen = 0;
-    
     void reset() {
-        memset(buffer, 0, OTA_MAX_BUFFER_SIZE);
+        memset(decoded_chunks, 0, sizeof(decoded_chunks));
+        memset(chunk_lens, 0, sizeof(chunk_lens));
         memset(received, 0, sizeof(received));
-        total_bytes = 0;
         max_chunk_seen = 0;
     }
-    
-    bool addChunk(int chunk_index, const uint8_t* data, int data_len) {
-        if (chunk_index >= OTA_MAX_CHUNKS || data_len > OTA_CHUNK_SIZE) {
-            return false;
-        }
-        
-        int offset = chunk_index * OTA_CHUNK_SIZE;
-        if (offset + data_len > OTA_MAX_BUFFER_SIZE) {
-            return false;
-        }
-        
-        memcpy(buffer + offset, data, data_len);
-        received[chunk_index] = true;
-        
-        if (chunk_index > max_chunk_seen) {
-            max_chunk_seen = chunk_index;
-        }
-        
-        // Update total bytes (find the highest chunk with data)
-        total_bytes = 0;
-        for (int i = 0; i <= max_chunk_seen; i++) {
-            if (received[i]) {
-                total_bytes = (i + 1) * OTA_CHUNK_SIZE;
-            }
-        }
-        
-        return true;
-    }
-    
-    bool isComplete() const {
-        // Check if we have all chunks from 0 to max_chunk_seen
-        for (int i = 0; i <= max_chunk_seen; i++) {
-            if (!received[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    String getJsonString() const {
-        return String((char*)buffer, total_bytes);
-    }
+    bool addChunk(int chunk_index, const uint8_t* data, int data_len);
+    bool isComplete() const;
+    String getJsonString() const;
 };
 
 extern OtaChunkBuffer ota_chunk_buffer;

@@ -55,17 +55,15 @@ extern OtaChunkBuffer ota_chunk_buffer;
 
 // Function declarations
 void handleDownlinkMessage(uint8_t* data, uint8_t dataLen, uint8_t fport);
-bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& updateInfo);
-OtaParseResult parseOtaMessageWithResult(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& updateInfo);
 bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo);
 bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5);
 void reportFirmwareVersion(CayenneLPP& lpp);
 bool testWifiConnection(const String& ssid, const String& password);
 #ifdef UNIT_TEST
 #include <string>
-bool verify_signature(const std::string& md5sum, const std::string& signature_b64);
+bool verify_signature(const std::string& url, const std::string& md5sum, const std::string& signature_b64);
 #else
-bool verify_signature(const String& md5sum, const String& signature_b64);
+bool verify_signature(const String& url, const String& md5sum, const String& signature_b64);
 #endif
 
 // OTA state management functions
@@ -77,6 +75,5 @@ int getFirmwareVersionInt();
 
 // New OTA chunk handling functions
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport);
-bool processOtaUpdate();
 
 #endif        // OTA_HPP_

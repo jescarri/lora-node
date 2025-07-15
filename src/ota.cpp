@@ -14,36 +14,87 @@ OtaChunkBuffer ota_chunk_buffer;
 // Update handleOtaChunk to use ota_chunk_buffer.addChunk, isComplete, and getJsonString
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     int idx = fport - 1;
-    Serial.printf("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\n", fport, idx, dataLen);
+    Serial.printf("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\r\n", fport, idx, dataLen);
     Serial.print("[OTA] Chunk data: ");
     for (int i = 0; i < dataLen; ++i) Serial.printf("%02X ", data[i]);
-    Serial.println();
+    Serial.printf("\r\n");
     if (idx < 0 || idx >= OTA_MAX_CHUNKS) {
-        Serial.printf("[OTA] Invalid chunk index: %d\n", idx);
+        Serial.printf("[OTA] Invalid chunk index: %d\r\n", idx);
         return;
     }
     if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) {
-        Serial.printf("[OTA] Failed to add chunk idx=%d len=%d\n", idx, dataLen);
+        Serial.printf("[OTA] Failed to add chunk idx=%d len=%d\r\n", idx, dataLen);
         return;
     }
-    Serial.printf("[OTA] Chunk %d added. Checking completeness...\n", idx);
+    Serial.printf("[OTA] Chunk %d added. Checking completeness...\r\n", idx);
     if (ota_chunk_buffer.isComplete()) {
         Serial.println("[OTA] All chunks received. Attempting reassembly and JSON parse...");
         String json = ota_chunk_buffer.getJsonString();
-        Serial.printf("[OTA] Reassembled JSON (%d bytes): %s\n", json.length(), json.c_str());
-        DynamicJsonDocument doc(512);
+        Serial.printf("[OTA] Reassembled JSON (%d bytes): %s\r\n", json.length(), json.c_str());
+        JsonDocument doc;
         auto error = deserializeJson(doc, json);
         if (!error) {
             Serial.println("[OTA] JSON parsed successfully. Triggering firmware update.");
             OtaUpdateInfo updateInfo;
-            if (parseOtaMessage((const uint8_t*)json.c_str(), json.length(), updateInfo)) {
-                setOtaInProgress(true);
-                downloadAndInstallFirmware(updateInfo);
+            // Extract fields (support both full and short names)
+            if (doc["url"]) {
+                updateInfo.url = doc["url"].as<String>();
+            } else if (doc["u"]) {
+                updateInfo.url = doc["u"].as<String>();
+            } else {
+                Serial.println("Missing url field");
+                ota_chunk_buffer.reset();
+                return;
+            }
+            if (doc["md5sum"]) {
+                updateInfo.md5sum = doc["md5sum"].as<String>();
+            } else if (doc["m"]) {
+                updateInfo.md5sum = doc["m"].as<String>();
+            } else {
+                Serial.println("Missing md5sum field");
+                ota_chunk_buffer.reset();
+                return;
+            }
+            if (doc["version"]) {
+                updateInfo.version = doc["version"].as<String>();
+            } else if (doc["v"]) {
+                updateInfo.version = doc["v"].as<String>();
+            } else {
+                Serial.println("Missing version field");
+                ota_chunk_buffer.reset();
+                return;
+            }
+            if (doc["signature"]) {
+                updateInfo.signature = doc["signature"].as<String>();
+            } else if (doc["s"]) {
+                updateInfo.signature = doc["s"].as<String>();
+            } else {
+                Serial.println("Missing signature field");
+                ota_chunk_buffer.reset();
+                return;
+            }
+            updateInfo.valid = true;
+            setOtaInProgress(true);
+            if (verify_signature(updateInfo.url, updateInfo.md5sum, updateInfo.signature)) {
+                Serial.println("Signature verification successful");
+                if (downloadAndInstallFirmware(updateInfo)) {
+                    Serial.println("Firmware update completed successfully - rebooting");
+                    ota_chunk_buffer.reset();
+                    setOtaInProgress(false);
+                    delay(1000);
+                    ESP.restart();
+                } else {
+                    Serial.println("Firmware update failed");
+                    setOtaInProgress(false);
+                    ota_chunk_buffer.reset();
+                }
+            } else {
+                Serial.println("Signature verification failed");
                 setOtaInProgress(false);
                 ota_chunk_buffer.reset();
             }
         } else {
-            Serial.printf("[OTA] JSON parse failed: %s\n", error.c_str());
+            Serial.printf("[OTA] JSON parse failed: %s\r\n", error.c_str());
         }
         // else: wait for more chunks or reset on fatal error
     } else {
@@ -51,121 +102,8 @@ void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     }
 }
 
-// Process OTA update - attempts JSON parsing and handles the update
-bool processOtaUpdate() {
-    if (!ota_chunk_buffer.isComplete()) {
-        return false;
-    }
-    
-    // Get the JSON string from buffer
-    String jsonString = ota_chunk_buffer.getJsonString();
-    Serial.printf("Attempting to parse JSON (%d bytes): %s\n", 
-                  jsonString.length(), jsonString.c_str());
-    
-    // Try to parse JSON
-    JsonDocument doc;
-    auto error = deserializeJson(doc, jsonString);
-    
-    if (error) {
-        Serial.printf("JSON parsing failed: %s\n", error.c_str());
-        
-        // Check if it's incomplete input
-        if (String(error.c_str()).indexOf("IncompleteInput") >= 0) {
-            Serial.println("Incomplete JSON - waiting for more chunks");
-            return false; // Wait for more chunks
-        }
-        
-        // Invalid JSON - reset buffer
-        Serial.println("Invalid JSON - resetting buffer");
-        ota_chunk_buffer.reset();
-        return false;
-    }
-    
-    // JSON parsed successfully - extract OTA info
-    Serial.println("JSON parsed successfully!");
-    
-    OtaUpdateInfo updateInfo = {};
-    
-    // Extract fields (support both full and short names)
-    if (doc.containsKey("url")) {
-        updateInfo.url = doc["url"].as<String>();
-    } else if (doc.containsKey("u")) {
-        updateInfo.url = doc["u"].as<String>();
-    } else {
-        Serial.println("Missing url field");
-        ota_chunk_buffer.reset();
-        return false;
-    }
-    
-    if (doc.containsKey("md5sum")) {
-        updateInfo.md5sum = doc["md5sum"].as<String>();
-    } else if (doc.containsKey("m")) {
-        updateInfo.md5sum = doc["m"].as<String>();
-    } else {
-        Serial.println("Missing md5sum field");
-        ota_chunk_buffer.reset();
-        return false;
-    }
-    
-    if (doc.containsKey("version")) {
-        updateInfo.version = doc["version"].as<String>();
-    } else if (doc.containsKey("v")) {
-        updateInfo.version = doc["v"].as<String>();
-    } else {
-        Serial.println("Missing version field");
-        ota_chunk_buffer.reset();
-        return false;
-    }
-    
-    if (doc.containsKey("signature")) {
-        updateInfo.signature = doc["signature"].as<String>();
-    } else if (doc.containsKey("s")) {
-        updateInfo.signature = doc["s"].as<String>();
-    } else {
-        Serial.println("Missing signature field");
-        ota_chunk_buffer.reset();
-        return false;
-    }
-    
-    updateInfo.valid = true;
-    
-    Serial.printf("OTA Info: url=%s, md5=%s, version=%s, sig=%s\n",
-                  updateInfo.url.c_str(), updateInfo.md5sum.c_str(), 
-                  updateInfo.version.c_str(), updateInfo.signature.c_str());
-    
-    // Set OTA in progress
-    setOtaInProgress(true);
-    
-    // Verify signature
-    if (!verify_signature(updateInfo.md5sum, updateInfo.signature)) {
-        Serial.println("Signature verification failed");
-        setOtaInProgress(false);
-        ota_chunk_buffer.reset();
-        return false;
-    }
-    
-    Serial.println("Signature verification successful");
-    
-    // Download and install firmware
-    if (downloadAndInstallFirmware(updateInfo)) {
-        Serial.println("Firmware update completed successfully - rebooting");
-        ota_chunk_buffer.reset();
-        setOtaInProgress(false);
-        
-        // Reboot after successful update
-        delay(1000);
-        ESP.restart();
-        return true;
-    } else {
-        Serial.println("Firmware update failed");
-        setOtaInProgress(false);
-        ota_chunk_buffer.reset();
-        return false;
-    }
-}
-
 void handleDownlinkMessage(uint8_t* data, uint8_t dataLen, uint8_t fport) {
-    Serial.printf("Downlink received: fport=%d, len=%d\n", fport, dataLen);
+    Serial.printf("Downlink received: fport=%d, len=%d\r\n", fport, dataLen);
     
     // Handle OTA chunks (fport 1-20)
     if (fport >= 1 && fport <= OTA_MAX_CHUNKS) {
@@ -225,7 +163,7 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     }
     
     updateInfo.valid = true;
-    return verify_signature(updateInfo.md5sum, updateInfo.signature);
+    return verify_signature(updateInfo.url, updateInfo.md5sum, updateInfo.signature);
 }
 
 // Legacy parse function with result
@@ -270,76 +208,67 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
 }
 
 #ifdef UNIT_TEST
-bool verify_signature(const std::string& md5sum, const std::string& signature_b64) {
-    return md5sum == "goodmd5" && signature_b64 == "VALIDSIG";
+bool verify_signature(const std::string& url, const std::string& md5sum, const std::string& signature_b64) {
+    // For unit test, simulate signature as url+md5sum == "goodurlgoodmd5" and signature == "VALIDSIG"
+    return (url + md5sum) == "goodurlgoodmd5" && signature_b64 == "VALIDSIG";
 }
 #else
-bool verify_signature(const String& md5sum, const String& signature_b64) {
-    if (md5sum.length() == 0 || signature_b64.length() == 0) {
-        Serial.println("Empty md5sum or signature");
+bool verify_signature(const String& url, const String& md5sum, const String& signature_b64) {
+    if (url.length() == 0 || md5sum.length() == 0 || signature_b64.length() == 0) {
+        Serial.println("Empty url, md5sum, or signature");
         return false;
     }
-    
-    Serial.printf("Verifying signature for md5: %s\n", md5sum.c_str());
-    Serial.printf("Signature (base64): %s\n", signature_b64.c_str());
-    
+    String message = url + md5sum;
+    Serial.printf("Verifying signature for message: %s\r\n", message.c_str());
+    Serial.printf("Signature (base64): %s\r\n", signature_b64.c_str());
     // Get public key from build flag
     const char* pubkey_hex = IDENTITYLABS_PUB_KEY;
-    Serial.printf("Public key: %s\n", pubkey_hex);
-    
+    Serial.printf("Public key: %s\r\n", pubkey_hex);
     // Convert hex public key to bytes
     unsigned char pubkey[32];
     if (strlen(pubkey_hex) != 64) {
         Serial.println("Invalid public key length");
         return false;
     }
-    
     for (int i = 0; i < 32; i++) {
         char hex_byte[3] = {pubkey_hex[i*2], pubkey_hex[i*2+1], 0};
         pubkey[i] = strtol(hex_byte, NULL, 16);
     }
-    
     // Decode base64 signature
     int sig_len = base64_dec_len(signature_b64.c_str(), signature_b64.length());
     if (sig_len != 64) {
-        Serial.printf("Invalid signature length: %d\n", sig_len);
+        Serial.printf("Invalid signature length: %d\r\n", sig_len);
         return false;
     }
-    
     unsigned char sig[64];
     base64_decode(sig, signature_b64.c_str(), signature_b64.length());
-    
     // Verify signature using libsodium
-    if (crypto_sign_verify_detached(sig, (const unsigned char*)md5sum.c_str(), md5sum.length(), pubkey) != 0) {
+    if (crypto_sign_verify_detached(sig, (const unsigned char*)message.c_str(), message.length(), pubkey) != 0) {
         Serial.println("Signature verification failed");
         return false;
     }
-    
     Serial.println("Signature verification successful");
     return true;
 }
 #endif
 
 #ifndef UNIT_TEST
+#include <mbedtls/md5.h>
 bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     if (!updateInfo.valid) {
         Serial.println("Invalid update info");
         return false;
     }
-
     // Get saved WiFi credentials
     String ssid = settings_get_string("wifi_ssid");
     String password = settings_get_string("wifi_password");
-
     if (ssid.length() == 0) {
         Serial.println("No WiFi credentials configured");
         return false;
     }
-
     // Enable WiFi for download
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
-
     // Wait for WiFi connection
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
@@ -347,74 +276,76 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         Serial.print(".");
         attempts++;
     }
-
     if (WiFi.status() != WL_CONNECTED) {
         Serial.println("Failed to connect to WiFi");
         return false;
     }
-
     Serial.println("WiFi connected");
     Serial.print("IP: "); Serial.println(WiFi.localIP());
-
     // Download firmware
     HTTPClient http;
     http.begin(updateInfo.url);
-
     int httpCode = http.GET();
     if (httpCode != HTTP_CODE_OK) {
-        Serial.printf("HTTP GET failed, error: %s\n", http.errorToString(httpCode).c_str());
+        Serial.printf("HTTP GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
         http.end();
         return false;
     }
-
     int contentLength = http.getSize();
-    Serial.printf("Content length: %d\n", contentLength);
-
+    Serial.printf("Content length: %d\r\n", contentLength);
     if (contentLength <= 0) {
         Serial.println("Invalid content length");
         http.end();
         return false;
     }
-
     // Check if we have enough space for the update
     if (contentLength > UPDATE_SIZE_UNKNOWN) {
         Serial.println("Firmware too large");
         http.end();
         return false;
     }
-
-    // Start update
-    if (!Update.begin(contentLength)) {
-        Serial.println("Not enough space to begin OTA");
-        http.end();
-        return false;
-    }
-
-    // Get the update stream
+    // Download firmware to buffer for MD5 validation
+    std::vector<uint8_t> fw_buf;
+    fw_buf.reserve(contentLength);
     WiFiClient* stream = http.getStreamPtr();
-
-    // Write firmware data
-    size_t written = Update.writeStream(*stream);
-    if (written != contentLength) {
-        Serial.printf("Written %d of %d bytes\n", written, contentLength);
-        http.end();
-        return false;
+    int total_read = 0;
+    while (total_read < contentLength) {
+        uint8_t buf[512];
+        int to_read = std::min(512, contentLength - total_read);
+        int n = stream->read(buf, to_read);
+        if (n <= 0) break;
+        fw_buf.insert(fw_buf.end(), buf, buf + n);
+        total_read += n;
     }
-
     http.end();
-
-    // Verify MD5 if provided
-    if (updateInfo.md5sum.length() > 0 && !Update.setMD5(updateInfo.md5sum.c_str())) {
-        Serial.println("Failed to set MD5");
+    Serial.printf("Downloaded %d bytes\r\n", (int)fw_buf.size());
+    // Calculate MD5
+    unsigned char hash[16];
+    mbedtls_md5(fw_buf.data(), fw_buf.size(), hash);
+    char md5str[33];
+    for (int i = 0; i < 16; ++i) sprintf(md5str + i * 2, "%02x", hash[i]);
+    md5str[32] = 0;
+    Serial.printf("Calculated MD5: %s\r\n", md5str);
+    Serial.printf("Expected MD5: %s\r\n", updateInfo.md5sum.c_str());
+    if (strcasecmp(md5str, updateInfo.md5sum.c_str()) != 0) {
+        Serial.println("MD5 mismatch! Aborting update.");
         return false;
     }
-
-    // End update
+    Serial.println("MD5 matches. Proceeding with OTA update.");
+    // Start update
+    if (!Update.begin(fw_buf.size())) {
+        Serial.println("Not enough space to begin OTA");
+        return false;
+    }
+    size_t written = Update.write(fw_buf.data(), fw_buf.size());
+    if (written != fw_buf.size()) {
+        Serial.printf("Written %d of %d bytes\r\n", (int)written, (int)fw_buf.size());
+        return false;
+    }
     if (!Update.end()) {
         Serial.println("Update end failed");
         return false;
     }
-
     Serial.println("OTA update completed successfully");
     return true;
 }
@@ -432,11 +363,7 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
     }
 
     unsigned char hash[16];
-    extern int mbedtls_md5(const unsigned char*, size_t, unsigned char*);
-    
-    if (mbedtls_md5(data, dataLen, hash) != 0) {
-        return false;
-    }
+    mbedtls_md5(data, dataLen, hash);
 
     String calculatedMd5 = "";
     for (int i = 0; i < 16; i++) {
@@ -462,7 +389,7 @@ void reportFirmwareVersion(CayenneLPP& lpp) {
     // Send the 3-digit version directly (e.g., 110 for v1.1.0)
     int versionInt = version::getFirmwareVersionInt();
     lpp.addGenericSensor(10, static_cast<float>(versionInt));
-    Serial.printf("Reporting firmware version: %d\n", versionInt);
+    Serial.printf("Reporting firmware version: %d\r\n", versionInt);
 }
 
 int getFirmwareVersionInt() {
@@ -508,7 +435,7 @@ bool testWifiConnection(const String&, const String&) {
 
 void setOtaInProgress(bool inProgress) {
     ota_in_progress = inProgress;
-    Serial.printf("OTA in progress: %s\n", inProgress ? "true" : "false");
+    Serial.printf("OTA in progress: %s\r\n", inProgress ? "true" : "false");
 }
 
 bool isOtaInProgress() {

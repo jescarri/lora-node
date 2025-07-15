@@ -9,6 +9,17 @@
 #include <string>
 #include <algorithm>
 #include <unity.h>
+#include <sodium.h>
+
+#ifdef UNIT_TEST
+#if defined(HAVE_SODIUM) || defined(__SODIUM_H__)
+#define TEST_HAS_SODIUM 1
+#else
+#define TEST_HAS_SODIUM 0
+#endif
+#else
+#define TEST_HAS_SODIUM 0
+#endif
 
 constexpr int OTA_MAX_CHUNKS = 10;
 constexpr int OTA_CHUNK_SIZE = 51;
@@ -198,11 +209,75 @@ void test_chunked_out_of_order() {
     TEST_ASSERT_EQUAL_STRING(json.c_str(), reassembled.c_str());
 }
 
+// --- Signature validation tests ---
+// Test keys (ed25519) for unit test only
+const unsigned char test_private_key[64] = {
+    0x1a,0x2b,0x3c,0x4d,0x5e,0x6f,0x7a,0x8b,0x9c,0xad,0xbe,0xcf,0xda,0xeb,0xfc,0x0d,
+    0x1e,0x2f,0x3a,0x4b,0x5c,0x6d,0x7e,0x8f,0x9a,0xab,0xbc,0xcd,0xde,0xef,0xfa,0x0b,
+    0x1a,0x2b,0x3c,0x4d,0x5e,0x6f,0x7a,0x8b,0x9c,0xad,0xbe,0xcf,0xda,0xeb,0xfc,0x0d,
+    0x1e,0x2f,0x3a,0x4b,0x5c,0x6d,0x7e,0x8f,0x9a,0xab,0xbc,0xcd,0xde,0xef,0xfa,0x0b
+};
+const unsigned char test_public_key[32] = {
+    0x1a,0x2b,0x3c,0x4d,0x5e,0x6f,0x7a,0x8b,0x9c,0xad,0xbe,0xcf,0xda,0xeb,0xfc,0x0d,
+    0x1e,0x2f,0x3a,0x4b,0x5c,0x6d,0x7e,0x8f,0x9a,0xab,0xbc,0xcd,0xde,0xef,0xfa,0x0b
+};
+std::string base64_encode(const unsigned char* data, size_t len) {
+    static const char* b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    int val = 0, valb = -6;
+    for (size_t i = 0; i < len; ++i) {
+        val = (val << 8) + data[i];
+        valb += 8;
+        while (valb >= 0) {
+            out.push_back(b64[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+    if (valb > -6) out.push_back(b64[((val << 8) >> (valb + 8)) & 0x3F]);
+    while (out.size() % 4) out.push_back('=');
+    return out;
+}
+void test_signature_validation_valid() {
+#if TEST_HAS_SODIUM
+    std::string url = "http://foo.bar/f.elf";
+    std::string md5 = "cafebabe1234567890abcdef12345678";
+    std::string message = url + md5;
+    unsigned char sig[64];
+    crypto_sign_detached(sig, nullptr, (const unsigned char*)message.data(), message.size(), test_private_key);
+    std::string sig_b64 = base64_encode(sig, 64);
+    extern bool verify_signature(const std::string&, const std::string&, const std::string&);
+    TEST_ASSERT_TRUE(verify_signature(url, md5, sig_b64));
+#else
+    TEST_IGNORE_MESSAGE("libsodium not available");
+#endif
+}
+void test_signature_validation_invalid() {
+#if TEST_HAS_SODIUM
+    std::string url = "http://foo.bar/f.elf";
+    std::string md5 = "cafebabe1234567890abcdef12345678";
+    std::string message = url + md5;
+    unsigned char sig[64];
+    crypto_sign_detached(sig, nullptr, (const unsigned char*)message.data(), message.size(), test_private_key);
+    std::string sig_b64 = base64_encode(sig, 64);
+    extern bool verify_signature(const std::string&, const std::string&, const std::string&);
+    // Tamper with message
+    TEST_ASSERT_FALSE(verify_signature(url, "badmd5", sig_b64));
+    // Tamper with signature
+    std::string bad_sig = sig_b64;
+    bad_sig[0] = (bad_sig[0] == 'A' ? 'B' : 'A');
+    TEST_ASSERT_FALSE(verify_signature(url, md5, bad_sig));
+#else
+    TEST_IGNORE_MESSAGE("libsodium not available");
+#endif
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_chunked_reassembly);
     RUN_TEST(test_chunked_missing_chunk);
-    RUN_TEST(test_ttn_chunked_downlink); // <-- new test
-    RUN_TEST(test_chunked_out_of_order); // <-- new test
+    RUN_TEST(test_ttn_chunked_downlink);
+    RUN_TEST(test_chunked_out_of_order);
+    RUN_TEST(test_signature_validation_valid);
+    RUN_TEST(test_signature_validation_invalid);
     return UNITY_END();
 } 

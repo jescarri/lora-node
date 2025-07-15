@@ -71,7 +71,6 @@ bool settings_has_key(const char* key) { return false; }
 bool settings_get_bool(const char* key, bool defaultValue) { return defaultValue; }
 
 // OTA function implementations (stubs for native testing)
-bool parseOtaMessage(const uint8_t* data, uint8_t len, struct OtaUpdateInfo& info) { return false; }
 bool verifyMd5Sum(const uint8_t* data, unsigned long len, const String& expectedHash) { return false; }
 
 // Calibration function implementations with return statements

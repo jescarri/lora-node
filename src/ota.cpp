@@ -11,71 +11,26 @@
 volatile bool ota_in_progress = false;
 OtaChunkBuffer ota_chunk_buffer;
 
-// Simple base64 decoder
-static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-static int base64_dec_len(const char* input, int length) {
-    int padding = 0;
-    if (length > 0 && input[length - 1] == '=') padding++;
-    if (length > 1 && input[length - 2] == '=') padding++;
-    return (length * 3) / 4 - padding;
-}
-
-static bool base64_decode(unsigned char* output, const char* input, int length) {
-    int i = 0, j = 0;
-    int dec_len = 0;
-    int a, b, c, d;
-    
-    while (i < length) {
-        // Find the base64 character
-        for (a = 0; a < 64 && base64_chars[a] != input[i]; a++);
-        i++;
-        if (a == 64) return false;
-        
-        for (b = 0; b < 64 && base64_chars[b] != input[i]; b++);
-        i++;
-        if (b == 64) return false;
-        
-        for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
-        i++;
-        if (c == 64) return false;
-        
-        for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
-        i++;
-        if (d == 64) return false;
-        
-        output[j++] = (a << 2) | (b >> 4);
-        output[j++] = (b << 4) | (c >> 2);
-        output[j++] = (c << 6) | d;
-    }
-    
-    return true;
-}
-
-// New OTA chunk handling - simplified approach
+// Update handleOtaChunk to use ota_chunk_buffer.addChunk, isComplete, and getJsonString
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
-    if (data == nullptr || dataLen == 0) {
-        Serial.println("handleOtaChunk: Invalid data");
-        return;
-    }
-    
-    // fport is 1-based chunk index
-    int chunk_index = fport - 1;
-    
-    Serial.printf("Received OTA chunk %d, length=%d\n", fport, dataLen);
-    
-    // Add chunk to buffer
-    if (!ota_chunk_buffer.addChunk(chunk_index, data, dataLen)) {
-        Serial.printf("Failed to add chunk %d to buffer\n", fport);
-        return;
-    }
-    
-    Serial.printf("Added chunk %d, total_bytes=%d, max_chunk=%d\n", 
-                  fport, ota_chunk_buffer.total_bytes, ota_chunk_buffer.max_chunk_seen);
-    
-    // Try to parse JSON after each chunk
-    if (processOtaUpdate()) {
-        Serial.println("OTA update processed successfully");
+    int idx = fport - 1;
+    if (idx < 0 || idx >= OTA_MAX_CHUNKS) return;
+    if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) return;
+
+    if (ota_chunk_buffer.isComplete()) {
+        String json = ota_chunk_buffer.getJsonString();
+        DynamicJsonDocument doc(512);
+        auto error = deserializeJson(doc, json);
+        if (!error) {
+            OtaUpdateInfo updateInfo;
+            if (parseOtaMessage((const uint8_t*)json.c_str(), json.length(), updateInfo)) {
+                setOtaInProgress(true);
+                downloadAndInstallFirmware(updateInfo);
+                setOtaInProgress(false);
+                ota_chunk_buffer.reset();
+            }
+        }
+        // else: wait for more chunks or reset on fatal error
     }
 }
 
@@ -262,6 +217,39 @@ OtaParseResult parseOtaMessageWithResult(const uint8_t* data, uint8_t dataLen, O
         return OTA_PARSE_OK;
     }
     return OTA_PARSE_INVALID;
+}
+
+// Move base64 helpers above verify_signature
+static const char base64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static int base64_dec_len(const char* input, int length) {
+    int padding = 0;
+    if (length > 0 && input[length - 1] == '=') padding++;
+    if (length > 1 && input[length - 2] == '=') padding++;
+    return (length * 3) / 4 - padding;
+}
+
+static bool base64_decode(unsigned char* output, const char* input, int length) {
+    int i = 0, j = 0;
+    int a, b, c, d;
+    while (i < length) {
+        for (a = 0; a < 64 && base64_chars[a] != input[i]; a++);
+        i++;
+        if (a == 64) return false;
+        for (b = 0; b < 64 && base64_chars[b] != input[i]; b++);
+        i++;
+        if (b == 64) return false;
+        for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
+        i++;
+        if (c == 64) return false;
+        for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
+        i++;
+        if (d == 64) return false;
+        output[j++] = (a << 2) | (b >> 4);
+        output[j++] = (b << 4) | (c >> 2);
+        output[j++] = (c << 6) | d;
+    }
+    return true;
 }
 
 #ifdef UNIT_TEST

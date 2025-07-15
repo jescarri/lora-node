@@ -2,7 +2,7 @@
 #define OTA_HPP_
 
 constexpr int OTA_MAX_CHUNKS = 20;  // Increased for larger payloads
-constexpr int OTA_CHUNK_SIZE = 51;  // LoRaWAN max payload
+constexpr int OTA_CHUNK_SIZE = 70;  // Increased to accommodate base64 encoded payloads
 constexpr int OTA_MAX_BUFFER_SIZE = OTA_MAX_CHUNKS * OTA_CHUNK_SIZE;  // Total buffer size
 
 #include <Arduino.h>

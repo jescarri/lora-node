@@ -156,10 +156,53 @@ void test_ttn_chunked_downlink() {
     TEST_ASSERT_EQUAL_STRING(expected, reassembled.c_str());
 }
 
+void test_chunked_out_of_order() {
+    ota_chunk_buffer.reset();
+    std::string json = "{\"u\":\"https://t.co/abc\",\"m\":\"deadbeefdeadbeefdeadbeefdeadbeef\",\"v\":\"214\",\"s\":\"SIG\"}";
+    int chunk_size = 20;
+    int total_chunks = (json.size() + chunk_size - 1) / chunk_size;
+    ota_chunk_buffer.total_chunks = total_chunks;
+    std::vector<std::pair<int, std::string>> chunks;
+    for (int i = 0; i < total_chunks; ++i) {
+        int len = std::min(chunk_size, (int)json.size() - i * chunk_size);
+        std::string chunk = json.substr(i * chunk_size, len);
+        // Base64-encode each chunk
+        std::string b64chunk;
+        static const char b64_chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        int val = 0, valb = -6;
+        for (unsigned char c : chunk) {
+            val = (val << 8) + c;
+            valb += 8;
+            while (valb >= 0) {
+                b64chunk.push_back(b64_chars[(val >> valb) & 0x3F]);
+                valb -= 6;
+            }
+        }
+        if (valb > -6) b64chunk.push_back(b64_chars[((val << 8) >> (valb + 8)) & 0x3F]);
+        while (b64chunk.size() % 4) b64chunk.push_back('=');
+        chunks.push_back({i, b64chunk});
+    }
+    // Shuffle chunks to simulate out-of-order arrival
+    std::swap(chunks[0], chunks[1]);
+    // Add first chunk (actually chunk 1)
+    handleOtaChunk((const uint8_t*)chunks[0].second.data(), chunks[0].second.size(), chunks[0].first + 1);
+    std::string reassembled;
+    TEST_ASSERT_FALSE(tryReassembleOtaJson(reassembled));
+    // Add second chunk (actually chunk 0)
+    handleOtaChunk((const uint8_t*)chunks[1].second.data(), chunks[1].second.size(), chunks[1].first + 1);
+    // Add remaining chunks in order
+    for (size_t i = 2; i < chunks.size(); ++i) {
+        handleOtaChunk((const uint8_t*)chunks[i].second.data(), chunks[i].second.size(), chunks[i].first + 1);
+    }
+    TEST_ASSERT_TRUE(tryReassembleOtaJson(reassembled));
+    TEST_ASSERT_EQUAL_STRING(json.c_str(), reassembled.c_str());
+}
+
 int main(int argc, char **argv) {
     UNITY_BEGIN();
     RUN_TEST(test_chunked_reassembly);
     RUN_TEST(test_chunked_missing_chunk);
     RUN_TEST(test_ttn_chunked_downlink); // <-- new test
+    RUN_TEST(test_chunked_out_of_order); // <-- new test
     return UNITY_END();
 } 

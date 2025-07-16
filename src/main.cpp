@@ -5,6 +5,7 @@
 #include <lmic.h>
 
 #include "esp_bt.h"
+#include "esp_wifi.h"
 
 #include "esp_sleep.h"
 #include "lorawan.hpp"
@@ -17,6 +18,24 @@
 #include <FastLED.h>
 #include <Wire.h>
 #include <hal/hal.h>
+
+// PROGMEM string constants
+const char PROGMEM msg_lipo_gauge_found[] = "LIPO GAUGE FOUND";
+const char PROGMEM msg_no_max14048[] = "No MAX14048 found";
+const char PROGMEM msg_lmic_config_present[] = "LMIC CONFIG Present: ";
+const char PROGMEM msg_webconf_status[] = "Webconf status: ";
+const char PROGMEM msg_otaa_config_done[] = "otaa_config_done: ";
+const char PROGMEM msg_sleeping_for[] = "Sleeping for: ";
+const char PROGMEM msg_seconds[] = " seconds";
+const char PROGMEM msg_lmic_data_found[] = "LMIC Data found";
+const char PROGMEM msg_can_go_sleep[] = "Can go sleep ";
+const char PROGMEM msg_cannot_sleep[] = "Cannot sleep ";
+const char PROGMEM msg_time_critical_jobs[] = "TimeCriticalJobs: ";
+const char PROGMEM msg_runtime[] = "Runtime: ";
+const char PROGMEM msg_going_to_deepsleep[] = "Going to DeepSleep for: ";
+const char PROGMEM msg_go_deepsleep[] = "Go DeepSleep";
+const char PROGMEM msg_ota_in_progress[] = "OTA in progress - preventing deep sleep";
+const char PROGMEM msg_waiting_for_ota[] = "Waiting for OTA to complete...";
 
 constexpr int VCC_ENA_PIN                   = 13;
 constexpr int START_WEB_CONFIG_PIN          = 16;
@@ -108,24 +127,24 @@ void setup() {
     if (maxlipo.begin()) {
         // Wake up the lipo gauge
         maxLipoFound = true;
-        Serial.println("LIPO GAUGE FOUND");
+        Serial.println(FPSTR(msg_lipo_gauge_found));
     } else {
-        Serial.println("No MAX14048 found");
+        Serial.println(FPSTR(msg_no_max14048));
     }
     FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, NUM_LEDS);
     FastLED.setBrightness(50);
     lorawan_preferences_init();
-    Serial.print("LMIC CONFIG Present: ");
+    Serial.print(FPSTR(msg_lmic_config_present));
     Serial.println(lorawanConfigPresent());
     startWebConfig = !digitalRead(START_WEB_CONFIG_PIN);
-    Serial.print("Webconf status: ");
+    Serial.print(FPSTR(msg_webconf_status));
     Serial.println(startWebConfig);
     bool otaa_cfg = settings_has_key("ttn_otaa_config");
-    Serial.print("otaa_config_done: ");
+    Serial.print(FPSTR(msg_otaa_config_done));
     Serial.println(otaa_cfg);
-    Serial.print("Sleeping for: ");
+    Serial.print(FPSTR(msg_sleeping_for));
     Serial.print(get_sleep_time_seconds());
-    Serial.println(" seconds");
+    Serial.println(FPSTR(msg_seconds));
 
     if ((startWebConfig == true) || (!otaa_cfg)) {
         setCpuFrequencyMhz(80);
@@ -141,11 +160,15 @@ void setup() {
 
     LMIC_reset();
     if (!lmic_init_needed()) {
+#ifdef DEBUG
         Serial.println(LMIC.seqnoUp);
-        Serial.println("LMIC Data found");
+        Serial.println(FPSTR(msg_lmic_data_found));
+#endif
         load_lmic();
 
+#ifdef DEBUG
         Serial.println(LMIC.seqnoUp);
+#endif
     }
 
     LoraWANDebug(LMIC);
@@ -165,9 +188,9 @@ void loop() {
 
     // Check if OTA is in progress - prevent sleep during OTA
     if (isOtaInProgress()) {
-        Serial.println("OTA in progress - preventing deep sleep");
+        Serial.println(FPSTR(msg_ota_in_progress));
         if (lastPrintTime + 1000 < millis()) {
-            Serial.println("Waiting for OTA to complete...");
+            Serial.println(FPSTR(msg_waiting_for_ota));
             PrintRuntime();
             lastPrintTime = millis();
         }
@@ -200,16 +223,16 @@ void loop() {
 
 void PrintRuntime() {
     long seconds = millis() / 1000;
-    Serial.print("Runtime: ");
+    Serial.print(FPSTR(msg_runtime));
     Serial.print(seconds);
-    Serial.println(" seconds");
+    Serial.println(FPSTR(msg_seconds));
 }
 
 [[noreturn]] void GoDeepSleep() {
     // Turn off the lipo gauge:
     //
     unsigned long long sleepTime = get_sleep_time_seconds();
-    Serial.println("Going to DeepSleep for: ");
+    Serial.println(FPSTR(msg_going_to_deepsleep));
     Serial.println(sleepTime);
     leds[0] = CRGB::Black;
     FastLED.show();

@@ -45,13 +45,50 @@ jobs:
         run: |
           pip install --upgrade platformio
           pip install gcovr==7.2
-          sudo apt-get install build-essential
+          sudo apt-get install build-essential bc jq
 
       - name: Run unit tests (native)
         run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
 
       - name: Compile project
-        run: pio run
+        run: pio run -e ttgo-lora32-v1-release
+
+      - name: Check flash size limit
+        run: |
+          # Get build output with JSON format for size information
+          BUILD_OUTPUT=$(pio run -e ttgo-lora32-v1-release --json-output 2>&1 | tail -n 1)
+          echo "Build output: $BUILD_OUTPUT"
+          
+          # Extract flash usage from build output
+          FLASH_USED=$(echo "$BUILD_OUTPUT" | jq -r '.flash_used // empty')
+          
+          # If JSON parsing fails, try to extract from regular build output
+          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" = "null" ]; then
+            echo "JSON parsing failed, trying alternative method..."
+            pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
+            FLASH_USED=$(grep -oP 'Flash:\s*\K\d+' build_output.log | tail -n 1)
+          fi
+          
+          echo "Flash used: $FLASH_USED bytes"
+          
+          # Check if flash usage exceeds 1,300,000 bytes
+          if [ -n "$FLASH_USED" ] && [ "$FLASH_USED" -gt 1300000 ]; then
+            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
+            echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+            exit 1
+          else
+            echo "✅ Flash usage OK: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+          fi
+
+      - name: Store map files as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-branch-${{ github.sha }}
+          path: |
+            .pio/build/ttgo-lora32-v1-release/firmware.map
+            .pio/build/ttgo-lora32-v1-release/firmware.elf
+          retention-days: 30
+        if: always()
 
       - name: Generate Compilation DB
         run: pio run -t compiledb
@@ -104,13 +141,50 @@ jobs:
         run: |
           pip install --upgrade platformio
           pip install gcovr==7.2
-          sudo apt-get install build-essential
+          sudo apt-get install build-essential bc jq
 
       - name: Run unit tests (native)
         run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
 
       - name: Compile project
-        run: pio run
+        run: pio run -e ttgo-lora32-v1-release
+
+      - name: Check flash size limit
+        run: |
+          # Get build output with JSON format for size information
+          BUILD_OUTPUT=$(pio run -e ttgo-lora32-v1-release --json-output 2>&1 | tail -n 1)
+          echo "Build output: $BUILD_OUTPUT"
+          
+          # Extract flash usage from build output
+          FLASH_USED=$(echo "$BUILD_OUTPUT" | jq -r '.flash_used // empty')
+          
+          # If JSON parsing fails, try to extract from regular build output
+          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" = "null" ]; then
+            echo "JSON parsing failed, trying alternative method..."
+            pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
+            FLASH_USED=$(grep -oP 'Flash:\s*\K\d+' build_output.log | tail -n 1)
+          fi
+          
+          echo "Flash used: $FLASH_USED bytes"
+          
+          # Check if flash usage exceeds 1,300,000 bytes
+          if [ -n "$FLASH_USED" ] && [ "$FLASH_USED" -gt 1300000 ]; then
+            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
+            echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+            exit 1
+          else
+            echo "✅ Flash usage OK: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+          fi
+
+      - name: Store map files as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-main-${{ github.sha }}
+          path: |
+            .pio/build/ttgo-lora32-v1-release/firmware.map
+            .pio/build/ttgo-lora32-v1-release/firmware.elf
+          retention-days: 30
+        if: always()
 
       - name: Generate Compilation DB
         run: pio run -t compiledb
@@ -195,20 +269,48 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade platformio
-          sudo apt-get install build-essential
+          sudo apt-get install build-essential bc jq
 
       - name: Run unit tests (native)
         run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
 
       - name: Compile with updated firmware version
-        run: pio run
+        run: pio run -e ttgo-lora32-v1-release
+
+      - name: Check flash size limit
+        run: |
+          # Get build output with JSON format for size information
+          BUILD_OUTPUT=$(pio run -e ttgo-lora32-v1-release --json-output 2>&1 | tail -n 1)
+          echo "Build output: $BUILD_OUTPUT"
+          
+          # Extract flash usage from build output
+          FLASH_USED=$(echo "$BUILD_OUTPUT" | jq -r '.flash_used // empty')
+          
+          # If JSON parsing fails, try to extract from regular build output
+          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" = "null" ]; then
+            echo "JSON parsing failed, trying alternative method..."
+            pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
+            FLASH_USED=$(grep -oP 'Flash:\s*\K\d+' build_output.log | tail -n 1)
+          fi
+          
+          echo "Flash used: $FLASH_USED bytes"
+          
+          # Check if flash usage exceeds 1,300,000 bytes
+          if [ -n "$FLASH_USED" ] && [ "$FLASH_USED" -gt 1300000 ]; then
+            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
+            echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+            exit 1
+          else
+            echo "✅ Flash usage OK: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+          fi
 
       - name: Create release artifacts
         run: |
           mkdir -p artifacts
-          cp .pio/build/ttgo-lora32-v1/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
-          cp .pio/build/ttgo-lora32-v1/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
-          cp .pio/build/ttgo-lora32-v1/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
+          cp .pio/build/ttgo-lora32-v1-release/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
+          cp .pio/build/ttgo-lora32-v1-release/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
+          cp .pio/build/ttgo-lora32-v1-release/firmware.map artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.map
+          cp .pio/build/ttgo-lora32-v1-release/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
 
           # Create a manifest file with build info
           cat > artifacts/build-info-${{ steps.validate-tag.outputs.tag_name }}.json << EOF
@@ -248,6 +350,7 @@ jobs:
             ### Artifacts
             - `firmware-${{ steps.validate-tag.outputs.tag_name }}.bin` - Binary firmware file
             - `firmware-${{ steps.validate-tag.outputs.tag_name }}.elf` - ELF debug file
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.map` - Memory map file (for debugging memory regressions)
             - `partitions-${{ steps.validate-tag.outputs.tag_name }}.bin` - Partition table
             - `build-info-${{ steps.validate-tag.outputs.tag_name }}.json` - Build metadata
 

@@ -1,0 +1,83 @@
+name: Size Baseline Capture
+
+on:
+  push:
+    branches:
+      - size-baseline
+
+env:
+  PLATFORMIO_CACHE_DIR: ~/.platformio/.cache
+
+jobs:
+  capture-size-baseline:
+    name: Capture Size Baseline Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/pip
+            ${{ env.PLATFORMIO_CACHE_DIR }}
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade platformio
+          sudo apt-get install build-essential
+
+      - name: Clean build and capture artifacts
+        run: |
+          # Clean build with verbose output
+          pio run -v > ci-build.log 2>&1
+          
+          # Create baseline artifacts directory
+          mkdir -p ci-baseline-artifacts
+          
+          # Copy generated files
+          cp .pio/build/ttgo-lora32-v1/firmware.elf ci-baseline-artifacts/
+          cp .pio/build/ttgo-lora32-v1/firmware.map ci-baseline-artifacts/
+          cp ci-build.log ci-baseline-artifacts/
+          
+          # Extract memory usage information
+          echo "Size Baseline - CI Build" > ci-baseline-artifacts/ci-memory-usage.txt
+          echo "=========================" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "Build Environment: ubuntu-latest (GitHub Actions)" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "Git Branch: ${{ github.ref_name }}" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "Git Commit: ${{ github.sha }}" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
+          
+          # Extract RAM and Flash usage from build log
+          grep -A 2 -B 2 "RAM:\|Flash:" ci-build.log >> ci-baseline-artifacts/ci-memory-usage.txt || true
+          
+          # Show file sizes
+          echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "FILE SIZES:" >> ci-baseline-artifacts/ci-memory-usage.txt
+          ls -la ci-baseline-artifacts/ >> ci-baseline-artifacts/ci-memory-usage.txt
+
+      - name: Upload CI baseline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-size-baseline-${{ github.sha }}
+          path: ci-baseline-artifacts/
+          retention-days: 90
+
+      - name: Display memory usage summary
+        run: |
+          echo "=== CI BUILD MEMORY USAGE ==="
+          grep -A 10 -B 5 "RAM:\|Flash:" ci-build.log || echo "Memory usage information not found in build log"
+          echo ""
+          echo "=== ARTIFACT FILES ==="
+          ls -la ci-baseline-artifacts/

@@ -17,3 +17,15 @@ uploadfs:
 .PHONY: test
 test:
 	platformio test -e native
+
+.PHONY: test-cli
+test-cli:
+	cd cli && go test ./... -v
+
+.PHONY: build-cli
+build-cli:
+	cd cli && go build -o lora-sensor-cli .
+
+.PHONY: lint-cli
+lint-cli:
+	cd cli && golangci-lint run

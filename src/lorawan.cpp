@@ -187,10 +187,10 @@ void onEvent(ev_t ev) {
                 }
                 
                 // Handle OTA update messages on port 1
-                if (fPort == 1) {
+                if (fPort >= 1 && fPort <= OTA_MAX_CHUNKS) {
                     uint8_t* downlinkData = &LMIC.frame[LMIC.dataBeg];
                     uint8_t downlinkLen = LMIC.dataLen;
-                    handleDownlinkMessage(downlinkData, downlinkLen);
+                    handleDownlinkMessage(downlinkData, downlinkLen, fPort);
                 }
             }
             enableSleep_ = true;

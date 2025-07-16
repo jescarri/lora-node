@@ -1,0 +1,25 @@
+Size Tracking Baseline - Memory Usage Summary
+=============================================
+
+Build Environment: ttgo-lora32-v1
+Build Date: Wed 16 Jul 2025 12:56:56 PM PDT
+Git Branch: size-baseline
+Git Commit: faae3e0d8deeaebde633c6fe64fd03a4eff1e3f5
+
+MEMORY USAGE:
+- RAM:   17.3% (used 56,560 bytes from 327,680 bytes)
+- Flash: 99.3% (used 1,302,037 bytes from 1,310,720 bytes)
+
+AVAILABLE MEMORY:
+- Free RAM: 271,120 bytes (82.7%)
+- Free Flash: 8,683 bytes (0.7%)
+
+FILES ARCHIVED:
+- firmware.elf: Complete firmware binary
+- firmware.map: Memory map file for analysis
+- build.log: Verbose build output with detailed memory sections
+
+USAGE:
+This baseline can be used to compare memory usage changes in future builds.
+Use the firmware.map file to analyze memory layout changes.
+Compare build.log files to identify which components contribute to size changes.

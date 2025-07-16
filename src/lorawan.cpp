@@ -9,6 +9,34 @@
 #include <Adafruit_MAX1704X.h>
 #include <array>
 
+// PROGMEM string constants for LoRaWAN
+const char PROGMEM msg_lmic_opmode[] = "LMIC.opmode: ";
+const char PROGMEM msg_lmic_seqno_up[] = "LMIC.seqnoUp = ";
+const char PROGMEM msg_lmic_global_duty_rate[] = "LMIC.globalDutyRate = ";
+const char PROGMEM msg_lmic_global_duty_avail[] = "LMIC.globalDutyAvail = ";
+const char PROGMEM msg_lmic_band_plan_next_tx[] = "LMICbandplan_nextTx = ";
+const char PROGMEM msg_os_get_time[] = "os_getTime = ";
+const char PROGMEM msg_lmic_txend[] = "LMIC.txend = ";
+const char PROGMEM msg_lmic_txchnl[] = "LMIC.txChnl = ";
+const char PROGMEM msg_lmic_version[] = "LMIC: ";
+const char PROGMEM msg_oxticks[] = " osTicks, ";
+const char PROGMEM msg_sec[] = " sec";
+const char PROGMEM msg_separator[] = "-----";
+const char PROGMEM msg_do_send[] = "do_send";
+const char PROGMEM msg_lmic_opmode_equals[] = "LMIC.opmode= ";
+const char PROGMEM msg_app_eui[] = "app_eui: ";
+const char PROGMEM msg_dev_eui[] = "dev_eui: ";
+const char PROGMEM msg_app_key[] = "app_key: ";
+const char PROGMEM msg_charge_rate[] = "----ChargeRate: ";
+const char PROGMEM msg_x_format[] = "X: %f";
+const char PROGMEM msg_moisture_format[] = "Moisture ADC: %f, Moisture Percentage: %f, vBat %f\n\n";
+const char PROGMEM msg_error_app_eui[] = "ERROR: app_eui string missing or too short";
+const char PROGMEM msg_error_app_eui_hex[] = "ERROR: app_eui contains non-hex digits";
+const char PROGMEM msg_error_dev_eui[] = "ERROR: dev_eui string missing or too short";
+const char PROGMEM msg_error_dev_eui_hex[] = "ERROR: dev_eui contains non-hex digits";
+const char PROGMEM msg_error_app_key[] = "ERROR: app_key string missing or too short";
+const char PROGMEM msg_error_app_key_hex[] = "ERROR: app_key contains non-hex digits";
+
 sensorData sd;
 
 void LoraWANPrintLMICOpmode(void) {
@@ -65,6 +93,7 @@ void LoraWANPrintLMICOpmode(void) {
 
 #if !defined(UNIT_TEST)
 void LoraWANDebug(const lmic_t& lmic_check) {
+#ifdef DEBUG
     LoraWANPrintLMICOpmode();
     Serial.println("");
     Serial.println("-----");
@@ -103,6 +132,7 @@ void LoraWANDebug(const lmic_t& lmic_check) {
 
     Serial.println("");
     Serial.println("");
+#endif
 }
 #endif        // !UNIT_TEST
 
@@ -254,8 +284,8 @@ void do_send(osjob_t* /* j */) {
     reportFirmwareVersion(lpp);
 
     // Check if there is not a current TX/RX job running
-    Serial.println("do_send");
-    Serial.print("LMIC.opmode= ");
+    Serial.println(FPSTR(msg_do_send));
+    Serial.print(FPSTR(msg_lmic_opmode_equals));
     Serial.println(LMIC.opmode);
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
@@ -271,7 +301,7 @@ void os_getArtEui(u1_t *buf) {
     const String cfg = settings_get_string("app_eui");
 
     if (cfg.isEmpty() || cfg.length() < 16) {
-        Serial.println("ERROR: app_eui string missing or too short");
+        Serial.println(FPSTR(msg_error_app_eui));
         memset(buf, 0, 8);
         return;
     }
@@ -280,7 +310,7 @@ void os_getArtEui(u1_t *buf) {
 
     for (int c = 0, i = 0; c < 8; ++c, i += 2) {
         if (!isxdigit(cfg[i]) || !isxdigit(cfg[i + 1])) {
-            Serial.println("ERROR: app_eui contains non-hex digits");
+            Serial.println(FPSTR(msg_error_app_eui_hex));
             memset(buf, 0, 8);
             return;
         }
@@ -289,7 +319,7 @@ void os_getArtEui(u1_t *buf) {
         app_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
 
-    Serial.print("app_eui: ");
+    Serial.print(FPSTR(msg_app_eui));
     for (auto val : app_eui) {
         Serial.print(val, HEX);
     }
@@ -371,8 +401,10 @@ void ReadSensors() {
         sd.vBat       = maxlipo.cellVoltage();
         sd.batPercent = maxlipo.cellPercent();
         sd.batRate    = maxlipo.chargeRate();
-        Serial.print("----ChargeRate: ");
+#ifdef DEBUG
+        Serial.print(FPSTR(msg_charge_rate));
         Serial.println(sd.batRate);
+#endif
     }
     for (int i = 0; i < MAX_SENSOR_READ; i++) {
         float a = static_cast<float>(analogRead(config::SoilSensorPin));
@@ -385,8 +417,15 @@ void ReadSensors() {
                                                        get_calibration_air_value(),
                                                        get_calibration_water_value(), 0, 100));
     sd.soilMoisturePercentage = abs(x);
-    Serial.printf("X: %f", x);
-    Serial.println("");
-    Serial.printf("Moisture ADC: %f, Moisture Percentage: %f, vBat %f\n\n",
-                  sd.soilMoistureValue, sd.soilMoisturePercentage, sd.vBat);
+#ifdef DEBUG
+    Serial.print(F("X: "));
+    Serial.println(x);
+    Serial.print(F("Moisture ADC: "));
+    Serial.print(sd.soilMoistureValue);
+    Serial.print(F(", Moisture Percentage: "));
+    Serial.print(sd.soilMoisturePercentage);
+    Serial.print(F(", vBat "));
+    Serial.println(sd.vBat);
+    Serial.println();
+#endif
 }

@@ -15,6 +15,13 @@
 
 namespace config {
 
+// Debug control --------------------------------------------------------------
+#ifdef DEBUG_SERIAL
+    constexpr bool EnableDebug = true;
+#else
+    constexpr bool EnableDebug = false;
+#endif
+
 // SX127x / LMIC wiring -------------------------------------------------------
 constexpr int PinLmicNss  = 18;
 constexpr int PinLmicRst  = 14;

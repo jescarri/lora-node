@@ -55,24 +55,30 @@ jobs:
 
       - name: Check flash size limit
         run: |
-          # Get build output with JSON format for size information
-          BUILD_OUTPUT=$(pio run -e ttgo-lora32-v1-release --json-output 2>&1 | tail -n 1)
-          echo "Build output: $BUILD_OUTPUT"
+          # Get build output and extract flash usage
+          pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
           
           # Extract flash usage from build output
-          FLASH_USED=$(echo "$BUILD_OUTPUT" | jq -r '.flash_used // empty')
+          FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
           
-          # If JSON parsing fails, try to extract from regular build output
-          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" = "null" ]; then
-            echo "JSON parsing failed, trying alternative method..."
-            pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
-            FLASH_USED=$(grep -oP 'Flash:\s*\K\d+' build_output.log | tail -n 1)
+          if [ -z "$FLASH_USED" ]; then
+            echo "⚠️  Warning: Could not extract flash usage from build output"
+            echo "Looking for alternative patterns..."
+            # Try alternative patterns
+            FLASH_USED=$(grep -oP 'used \K\d+' build_output.log | tail -n 1)
+          fi
+          
+          if [ -z "$FLASH_USED" ]; then
+            echo "❌ ERROR: Could not determine flash usage from build output"
+            echo "Build output (last 20 lines):"
+            tail -n 20 build_output.log
+            exit 1
           fi
           
           echo "Flash used: $FLASH_USED bytes"
           
           # Check if flash usage exceeds 1,300,000 bytes
-          if [ -n "$FLASH_USED" ] && [ "$FLASH_USED" -gt 1300000 ]; then
+          if [ "$FLASH_USED" -gt 1300000 ]; then
             echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
             echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
             exit 1
@@ -151,24 +157,30 @@ jobs:
 
       - name: Check flash size limit
         run: |
-          # Get build output with JSON format for size information
-          BUILD_OUTPUT=$(pio run -e ttgo-lora32-v1-release --json-output 2>&1 | tail -n 1)
-          echo "Build output: $BUILD_OUTPUT"
+          # Get build output and extract flash usage
+          pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
           
           # Extract flash usage from build output
-          FLASH_USED=$(echo "$BUILD_OUTPUT" | jq -r '.flash_used // empty')
+          FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
           
-          # If JSON parsing fails, try to extract from regular build output
-          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" = "null" ]; then
-            echo "JSON parsing failed, trying alternative method..."
-            pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
-            FLASH_USED=$(grep -oP 'Flash:\s*\K\d+' build_output.log | tail -n 1)
+          if [ -z "$FLASH_USED" ]; then
+            echo "⚠️  Warning: Could not extract flash usage from build output"
+            echo "Looking for alternative patterns..."
+            # Try alternative patterns
+            FLASH_USED=$(grep -oP 'used \K\d+' build_output.log | tail -n 1)
+          fi
+          
+          if [ -z "$FLASH_USED" ]; then
+            echo "❌ ERROR: Could not determine flash usage from build output"
+            echo "Build output (last 20 lines):"
+            tail -n 20 build_output.log
+            exit 1
           fi
           
           echo "Flash used: $FLASH_USED bytes"
           
           # Check if flash usage exceeds 1,300,000 bytes
-          if [ -n "$FLASH_USED" ] && [ "$FLASH_USED" -gt 1300000 ]; then
+          if [ "$FLASH_USED" -gt 1300000 ]; then
             echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
             echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
             exit 1
@@ -279,24 +291,30 @@ jobs:
 
       - name: Check flash size limit
         run: |
-          # Get build output with JSON format for size information
-          BUILD_OUTPUT=$(pio run -e ttgo-lora32-v1-release --json-output 2>&1 | tail -n 1)
-          echo "Build output: $BUILD_OUTPUT"
+          # Get build output and extract flash usage
+          pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
           
           # Extract flash usage from build output
-          FLASH_USED=$(echo "$BUILD_OUTPUT" | jq -r '.flash_used // empty')
+          FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
           
-          # If JSON parsing fails, try to extract from regular build output
-          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" = "null" ]; then
-            echo "JSON parsing failed, trying alternative method..."
-            pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
-            FLASH_USED=$(grep -oP 'Flash:\s*\K\d+' build_output.log | tail -n 1)
+          if [ -z "$FLASH_USED" ]; then
+            echo "⚠️  Warning: Could not extract flash usage from build output"
+            echo "Looking for alternative patterns..."
+            # Try alternative patterns
+            FLASH_USED=$(grep -oP 'used \K\d+' build_output.log | tail -n 1)
+          fi
+          
+          if [ -z "$FLASH_USED" ]; then
+            echo "❌ ERROR: Could not determine flash usage from build output"
+            echo "Build output (last 20 lines):"
+            tail -n 20 build_output.log
+            exit 1
           fi
           
           echo "Flash used: $FLASH_USED bytes"
           
           # Check if flash usage exceeds 1,300,000 bytes
-          if [ -n "$FLASH_USED" ] && [ "$FLASH_USED" -gt 1300000 ]; then
+          if [ "$FLASH_USED" -gt 1300000 ]; then
             echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
             echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
             exit 1

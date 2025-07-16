@@ -36,22 +36,33 @@ jobs:
           pip install --upgrade platformio
           sudo apt-get install build-essential
 
-      - name: Clean build and capture artifacts
+      - name: Build release and capture artifacts
         run: |
-          # Clean build with verbose output
-          pio run -v > ci-build.log 2>&1
+          # Clean build with verbose output - use release environment for size baseline
+          pio run -e ttgo-lora32-v1-release -v > ci-build-release.log 2>&1 || RELEASE_BUILD_FAILED=1
           
           # Create baseline artifacts directory
           mkdir -p ci-baseline-artifacts
           
-          # Copy generated files
-          cp .pio/build/ttgo-lora32-v1/firmware.elf ci-baseline-artifacts/
-          cp .pio/build/ttgo-lora32-v1/firmware.map ci-baseline-artifacts/
-          cp ci-build.log ci-baseline-artifacts/
+          # Copy build log first (always available)
+          cp ci-build-release.log ci-baseline-artifacts/
+          
+          # Copy generated files if they exist
+          if [ -f ".pio/build/ttgo-lora32-v1-release/firmware.elf" ]; then
+            cp .pio/build/ttgo-lora32-v1-release/firmware.elf ci-baseline-artifacts/release-firmware.elf
+          else
+            echo "WARNING: release firmware.elf not found" >> ci-baseline-artifacts/build-warnings.txt
+          fi
+          
+          if [ -f ".pio/build/ttgo-lora32-v1-release/firmware.map" ]; then
+            cp .pio/build/ttgo-lora32-v1-release/firmware.map ci-baseline-artifacts/release-firmware.map
+          else
+            echo "WARNING: release firmware.map not found" >> ci-baseline-artifacts/build-warnings.txt
+          fi
           
           # Extract memory usage information
           echo "Size Baseline - CI Build" > ci-baseline-artifacts/ci-memory-usage.txt
-          echo "=========================" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "========================" >> ci-baseline-artifacts/ci-memory-usage.txt
           echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
           echo "Build Environment: ubuntu-latest (GitHub Actions)" >> ci-baseline-artifacts/ci-memory-usage.txt
           echo "Build Date: $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ci-baseline-artifacts/ci-memory-usage.txt
@@ -60,15 +71,69 @@ jobs:
           echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
           
           # Extract RAM and Flash usage from build log
-          grep -A 2 -B 2 "RAM:\|Flash:" ci-build.log >> ci-baseline-artifacts/ci-memory-usage.txt || true
+          echo "RELEASE BUILD (ttgo-lora32-v1-release):" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "========================================" >> ci-baseline-artifacts/ci-memory-usage.txt
+          if grep -q "RAM:\|Flash:" ci-build-release.log; then
+            grep -A 2 -B 2 "RAM:\|Flash:" ci-build-release.log >> ci-baseline-artifacts/ci-memory-usage.txt
+          else
+            echo "WARNING: No memory usage information found in release build log" >> ci-baseline-artifacts/ci-memory-usage.txt
+          fi
           
-          # Show file sizes
+          # Record release build status
+          if [ "$RELEASE_BUILD_FAILED" = "1" ]; then
+            echo "RELEASE BUILD STATUS: FAILED" >> ci-baseline-artifacts/ci-memory-usage.txt
+            echo "Release build failed - artifacts may be incomplete" >> ci-baseline-artifacts/build-warnings.txt
+          else
+            echo "RELEASE BUILD STATUS: SUCCESS" >> ci-baseline-artifacts/ci-memory-usage.txt
+          fi
+          
           echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
-          echo "FILE SIZES:" >> ci-baseline-artifacts/ci-memory-usage.txt
+          
+      - name: Build debug and capture artifacts
+        run: |
+          # Build debug environment for comparison
+          pio run -e ttgo-lora32-v1-debug -v > ci-build-debug.log 2>&1 || DEBUG_BUILD_FAILED=1
+          
+          # Copy debug build log
+          cp ci-build-debug.log ci-baseline-artifacts/
+          
+          # Copy debug generated files if they exist
+          if [ -f ".pio/build/ttgo-lora32-v1-debug/firmware.elf" ]; then
+            cp .pio/build/ttgo-lora32-v1-debug/firmware.elf ci-baseline-artifacts/debug-firmware.elf
+          else
+            echo "WARNING: debug firmware.elf not found" >> ci-baseline-artifacts/build-warnings.txt
+          fi
+          
+          if [ -f ".pio/build/ttgo-lora32-v1-debug/firmware.map" ]; then
+            cp .pio/build/ttgo-lora32-v1-debug/firmware.map ci-baseline-artifacts/debug-firmware.map
+          else
+            echo "WARNING: debug firmware.map not found" >> ci-baseline-artifacts/build-warnings.txt
+          fi
+          
+          # Add debug build info to memory usage report
+          echo "DEBUG BUILD (ttgo-lora32-v1-debug):" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "====================================" >> ci-baseline-artifacts/ci-memory-usage.txt
+          if grep -q "RAM:\|Flash:" ci-build-debug.log; then
+            grep -A 2 -B 2 "RAM:\|Flash:" ci-build-debug.log >> ci-baseline-artifacts/ci-memory-usage.txt
+          else
+            echo "WARNING: No memory usage information found in debug build log" >> ci-baseline-artifacts/ci-memory-usage.txt
+          fi
+          
+          # Record debug build status
+          if [ "$DEBUG_BUILD_FAILED" = "1" ]; then
+            echo "DEBUG BUILD STATUS: FAILED" >> ci-baseline-artifacts/ci-memory-usage.txt
+            echo "Debug build failed - artifacts may be incomplete" >> ci-baseline-artifacts/build-warnings.txt
+          else
+            echo "DEBUG BUILD STATUS: SUCCESS" >> ci-baseline-artifacts/ci-memory-usage.txt
+          fi
+          
+          echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "ARTIFACT FILES:" >> ci-baseline-artifacts/ci-memory-usage.txt
           ls -la ci-baseline-artifacts/ >> ci-baseline-artifacts/ci-memory-usage.txt
 
       - name: Upload CI baseline artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ci-size-baseline-${{ github.sha }}
           path: ci-baseline-artifacts/
@@ -76,8 +141,28 @@ jobs:
 
       - name: Display memory usage summary
         run: |
-          echo "=== CI BUILD MEMORY USAGE ==="
-          grep -A 10 -B 5 "RAM:\|Flash:" ci-build.log || echo "Memory usage information not found in build log"
+          echo "=== CI BUILD MEMORY USAGE SUMMARY ==="
+          echo "" 
+          echo "--- RELEASE BUILD ---"
+          if [ -f "ci-build-release.log" ]; then
+            grep -A 10 -B 5 "RAM:\|Flash:" ci-build-release.log || echo "Memory usage information not found in release build log"
+          else
+            echo "Release build log not found"
+          fi
+          echo ""
+          echo "--- DEBUG BUILD ---"
+          if [ -f "ci-build-debug.log" ]; then
+            grep -A 10 -B 5 "RAM:\|Flash:" ci-build-debug.log || echo "Memory usage information not found in debug build log"
+          else
+            echo "Debug build log not found"
+          fi
           echo ""
           echo "=== ARTIFACT FILES ==="
           ls -la ci-baseline-artifacts/
+          echo ""
+          echo "=== WARNINGS (if any) ==="
+          if [ -f "ci-baseline-artifacts/build-warnings.txt" ]; then
+            cat ci-baseline-artifacts/build-warnings.txt
+          else
+            echo "No warnings found"
+          fi

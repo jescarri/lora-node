@@ -57,6 +57,25 @@ Data is sent to the Things Network using CayenneLPP, This project uses the [elec
 
 3. Create an device use: LoRaWAN Specification 1.0.3, RP001 Regional Parameters 1.0.3 revision A
 
+# Build Configuration and Size Optimization
+
+This project uses a single optimized build configuration:
+
+- **ttgo-lora32-v1-release**: Production build with size optimizations (-Os, function/data sections, dead code elimination)
+
+## Size-Saving Tips
+
+1. **String Storage**: Use PROGMEM for string constants to reduce SRAM usage
+2. **Conditional Compilation**: Wrap diagnostic code with `#ifdef DEBUG` blocks for development
+3. **Compiler Optimization**: Use `-Os`, `-ffunction-sections`, `-fdata-sections`, `-Wl,--gc-sections`
+4. **LMIC Debug Level**: Set to 0 for production builds to reduce binary size
+
+## Current Build Size
+
+- **Release Build**: 92.4% Flash usage (1,211,449 bytes) - **90KB reduction achieved**
+
+For detailed build information, see [docs/BUILD.md](docs/BUILD.md).
+
 # Node Provisioning
 
 1. Build the firmware and upload it to the board.

@@ -14,6 +14,16 @@ program:
 uploadfs:
 	platformio -f -c vim run --target uploadfs
 
+# Build the optimized release firmware
+.PHONY: release
+release:
+	platformio -f -c vim run -e ttgo-lora32-v1-release
+
+# Build and immediately upload the release firmware
+.PHONY: upload-release
+upload-release: release
+	platformio -f -c vim run -e ttgo-lora32-v1-release --target upload
+
 .PHONY: test
 test:
 	platformio test -e native

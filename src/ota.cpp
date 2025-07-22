@@ -301,9 +301,25 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     // Download firmware
     HTTPClient http;
     http.begin(updateInfo.url);
+    
+    // Enable following redirects (important for URL shorteners like TinyURL)
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setRedirectLimit(10); // Allow up to 10 redirects
+    
+    Serial.printf("Starting download from: %s\r\n", updateInfo.url.c_str());
     int httpCode = http.GET();
+    
+    Serial.printf("HTTP response code: %d\r\n", httpCode);
+    
     if (httpCode != HTTP_CODE_OK) {
         Serial.printf("HTTP GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
+        
+        // Check for redirect codes that should have been handled
+        if (httpCode == 301 || httpCode == 302 || httpCode == 307 || httpCode == 308) {
+            String location = http.header("Location");
+            Serial.printf("Redirect location: %s\r\n", location.c_str());
+        }
+        
         http.end();
         return false;
     }

@@ -177,12 +177,10 @@ func updateDevice(ctx context.Context, cmd *cli.Command) error {
 	// Step 10: Publish chunks to TTN MQTT topic
 	topic := fmt.Sprintf("ttn/soil-conditions/devices/%s/down/push", deviceName)
 	fmt.Printf("Publishing to topic: %s\n", topic)
+	fmt.Printf("Publishing %d chunks as single TTN message\n", len(chunks))
 
-	for i, chunk := range chunks {
-		fmt.Printf("Publishing chunk %d/%d\n", i+1, len(chunks))
-		if err := mqttClient.Publish(topic, chunk); err != nil {
-			return fmt.Errorf("failed to publish chunk %d: %w", i+1, err)
-		}
+	if err := mqttClient.PublishChunks(topic, chunks); err != nil {
+		return fmt.Errorf("failed to publish chunks: %w", err)
 	}
 
 	fmt.Println("Firmware update payload published successfully!")

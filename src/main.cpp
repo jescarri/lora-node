@@ -1,4 +1,3 @@
-#ifndef UNIT_TEST
 #include "WiFi.h"
 #include "driver/adc.h"
 
@@ -132,23 +131,12 @@ void setup() {
     } else {
         Serial.println(FPSTR(msg_no_max14048));
     }
-    Serial.println("After LipoBegin");
     FastLED.addLeds<WS2812B, LED_DATA_PIN, GRB>(leds, NUM_LEDS);
     FastLED.setBrightness(50);
-    Serial.println("Before preferences");
     lorawan_preferences_init();
-    Serial.println("After Preferences");
     Serial.print(FPSTR(msg_lmic_config_present));
-    Serial.println(lorawanConfigPresent());
     startWebConfig = !digitalRead(START_WEB_CONFIG_PIN);
-    Serial.print(FPSTR(msg_webconf_status));
-    Serial.println(startWebConfig);
-    bool otaa_cfg = settings_has_key("ttn_otaa_config");
-    Serial.print(FPSTR(msg_otaa_config_done));
-    Serial.println(otaa_cfg);
-    Serial.print(FPSTR(msg_sleeping_for));
-    Serial.print(get_sleep_time_seconds());
-    Serial.println(FPSTR(msg_seconds));
+    bool otaa_cfg  = settings_has_key("ttn_otaa_config");
 
     if ((startWebConfig == true) || (!otaa_cfg)) {
         setCpuFrequencyMhz(80);
@@ -291,11 +279,3 @@ void PrintRuntime() {
     esp_sleep_enable_timer_wakeup(sleepTime * uS_TO_S_FACTOR);
     esp_deep_sleep_start();
 }
-#else
-// Minimal stubs for native build
-int main() { return 0; }
-#ifdef UNIT_TEST
-#include "../../test/stubs/esp32_gpio.h"
-lmic_t LMIC{};
-#endif
-#endif

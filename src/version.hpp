@@ -37,4 +37,4 @@ inline bool isDevelopmentBuild() {
  */
 const char* getBuildInfo();
 
-} // namespace version 
+}        // namespace version

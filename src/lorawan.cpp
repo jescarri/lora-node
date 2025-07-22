@@ -3,6 +3,7 @@
 #include "lorawan_settings.hpp"
 #include "utils.hpp"
 #include "ota.hpp"
+#include "debug.hpp"
 #include <cstring>
 #include <cctype>
 #include "lorawan_settings.hpp"
@@ -10,32 +11,32 @@
 #include <array>
 
 // PROGMEM string constants for LoRaWAN
-const char PROGMEM msg_lmic_opmode[] = "LMIC.opmode: ";
-const char PROGMEM msg_lmic_seqno_up[] = "LMIC.seqnoUp = ";
-const char PROGMEM msg_lmic_global_duty_rate[] = "LMIC.globalDutyRate = ";
+const char PROGMEM msg_lmic_opmode[]            = "LMIC.opmode: ";
+const char PROGMEM msg_lmic_seqno_up[]          = "LMIC.seqnoUp = ";
+const char PROGMEM msg_lmic_global_duty_rate[]  = "LMIC.globalDutyRate = ";
 const char PROGMEM msg_lmic_global_duty_avail[] = "LMIC.globalDutyAvail = ";
 const char PROGMEM msg_lmic_band_plan_next_tx[] = "LMICbandplan_nextTx = ";
-const char PROGMEM msg_os_get_time[] = "os_getTime = ";
-const char PROGMEM msg_lmic_txend[] = "LMIC.txend = ";
-const char PROGMEM msg_lmic_txchnl[] = "LMIC.txChnl = ";
-const char PROGMEM msg_lmic_version[] = "LMIC: ";
-const char PROGMEM msg_oxticks[] = " osTicks, ";
-const char PROGMEM msg_sec[] = " sec";
-const char PROGMEM msg_separator[] = "-----";
-const char PROGMEM msg_do_send[] = "do_send";
-const char PROGMEM msg_lmic_opmode_equals[] = "LMIC.opmode= ";
-const char PROGMEM msg_app_eui[] = "app_eui: ";
-const char PROGMEM msg_dev_eui[] = "dev_eui: ";
-const char PROGMEM msg_app_key[] = "app_key: ";
-const char PROGMEM msg_charge_rate[] = "----ChargeRate: ";
-const char PROGMEM msg_x_format[] = "X: %f";
-const char PROGMEM msg_moisture_format[] = "Moisture ADC: %f, Moisture Percentage: %f, vBat %f\n\n";
-const char PROGMEM msg_error_app_eui[] = "ERROR: app_eui string missing or too short";
-const char PROGMEM msg_error_app_eui_hex[] = "ERROR: app_eui contains non-hex digits";
-const char PROGMEM msg_error_dev_eui[] = "ERROR: dev_eui string missing or too short";
-const char PROGMEM msg_error_dev_eui_hex[] = "ERROR: dev_eui contains non-hex digits";
-const char PROGMEM msg_error_app_key[] = "ERROR: app_key string missing or too short";
-const char PROGMEM msg_error_app_key_hex[] = "ERROR: app_key contains non-hex digits";
+const char PROGMEM msg_os_get_time[]            = "os_getTime = ";
+const char PROGMEM msg_lmic_txend[]             = "LMIC.txend = ";
+const char PROGMEM msg_lmic_txchnl[]            = "LMIC.txChnl = ";
+const char PROGMEM msg_lmic_version[]           = "LMIC: ";
+const char PROGMEM msg_oxticks[]                = " osTicks, ";
+const char PROGMEM msg_sec[]                    = " sec";
+const char PROGMEM msg_separator[]              = "-----";
+const char PROGMEM msg_do_send[]                = "do_send";
+const char PROGMEM msg_lmic_opmode_equals[]     = "LMIC.opmode= ";
+const char PROGMEM msg_app_eui[]                = "app_eui: ";
+const char PROGMEM msg_dev_eui[]                = "dev_eui: ";
+const char PROGMEM msg_app_key[]                = "app_key: ";
+const char PROGMEM msg_charge_rate[]            = "----ChargeRate: ";
+const char PROGMEM msg_x_format[]               = "X: %f";
+const char PROGMEM msg_moisture_format[]        = "Moisture ADC: %f, Moisture Percentage: %f, vBat %f\n\n";
+const char PROGMEM msg_error_app_eui[]          = "ERROR: app_eui string missing or too short";
+const char PROGMEM msg_error_app_eui_hex[]      = "ERROR: app_eui contains non-hex digits";
+const char PROGMEM msg_error_dev_eui[]          = "ERROR: dev_eui string missing or too short";
+const char PROGMEM msg_error_dev_eui_hex[]      = "ERROR: dev_eui contains non-hex digits";
+const char PROGMEM msg_error_app_key[]          = "ERROR: app_key string missing or too short";
+const char PROGMEM msg_error_app_key_hex[]      = "ERROR: app_key contains non-hex digits";
 
 sensorData sd;
 
@@ -91,50 +92,48 @@ void LoraWANPrintLMICOpmode(void) {
     }
 }
 
-#if !defined(UNIT_TEST)
 void LoraWANDebug(const lmic_t& lmic_check) {
-#ifdef DEBUG
-    LoraWANPrintLMICOpmode();
-    Serial.println("");
-    Serial.println("-----");
+    // Debug output now compile-time disabled for optimized builds
+    DEBUG_PRINT("LMIC.opmode: ");
+    // LoraWANPrintLMICOpmode() is now disabled via debug macros
+    DEBUG_PRINTLN("");
+    DEBUG_PRINTLN("-----");
 
-    Serial.print(F("LMIC.seqnoUp = "));
-    Serial.println(lmic_check.seqnoUp);
+    DEBUG_PRINT("LMIC.seqnoUp = ");
+    DEBUG_PRINTLN(String(lmic_check.seqnoUp));
 
-    Serial.print(F("LMIC.globalDutyRate = "));
-    Serial.print(lmic_check.globalDutyRate);
-    Serial.print(F(" osTicks, "));
-    Serial.print(osticks2ms(lmic_check.globalDutyRate) / 1000);
-    Serial.println(F(" sec"));
+    DEBUG_PRINT("LMIC.globalDutyRate = ");
+    DEBUG_PRINT(String(lmic_check.globalDutyRate));
+    DEBUG_PRINT(" osTicks, ");
+    DEBUG_PRINT(String(osticks2ms(lmic_check.globalDutyRate) / 1000));
+    DEBUG_PRINTLN(" sec");
 
-    Serial.print(F("LMIC.globalDutyAvail = "));
-    Serial.print(lmic_check.globalDutyAvail);
-    Serial.print(F(" osTicks, "));
-    Serial.print(osticks2ms(lmic_check.globalDutyAvail) / 1000);
-    Serial.println(F(" sec"));
+    DEBUG_PRINT("LMIC.globalDutyAvail = ");
+    DEBUG_PRINT(String(lmic_check.globalDutyAvail));
+    DEBUG_PRINT(" osTicks, ");
+    DEBUG_PRINT(String(osticks2ms(lmic_check.globalDutyAvail) / 1000));
+    DEBUG_PRINTLN(" sec");
 
-    Serial.print(F("LMICbandplan_nextTx = "));
-    Serial.print(LMICbandplan_nextTx(os_getTime()));
-    Serial.print(F(" osTicks, "));
-    Serial.print(osticks2ms(LMICbandplan_nextTx(os_getTime())) / 1000);
-    Serial.println(F(" sec"));
+    DEBUG_PRINT("LMICbandplan_nextTx = ");
+    DEBUG_PRINT(String(LMICbandplan_nextTx(os_getTime())));
+    DEBUG_PRINT(" osTicks, ");
+    DEBUG_PRINT(String(osticks2ms(LMICbandplan_nextTx(os_getTime())) / 1000));
+    DEBUG_PRINTLN(" sec");
 
-    Serial.print(F("os_getTime = "));
-    Serial.print(os_getTime());
-    Serial.print(F(" osTicks, "));
-    Serial.print(osticks2ms(os_getTime()) / 1000);
-    Serial.println(F(" sec"));
+    DEBUG_PRINT("os_getTime = ");
+    DEBUG_PRINT(String(os_getTime()));
+    DEBUG_PRINT(" osTicks, ");
+    DEBUG_PRINT(String(osticks2ms(os_getTime()) / 1000));
+    DEBUG_PRINTLN(" sec");
 
-    Serial.print(F("LMIC.txend = "));
-    Serial.println(lmic_check.txend);
-    Serial.print(F("LMIC.txChnl = "));
-    Serial.println(lmic_check.txChnl);
+    DEBUG_PRINT("LMIC.txend = ");
+    DEBUG_PRINTLN(String(lmic_check.txend));
+    DEBUG_PRINT("LMIC.txChnl = ");
+    DEBUG_PRINTLN(String(lmic_check.txChnl));
 
-    Serial.println("");
-    Serial.println("");
-#endif
+    DEBUG_PRINTLN("");
+    DEBUG_PRINTLN("");
 }
-#endif        // !UNIT_TEST
 
 void PrintLMICVersion() {
     Serial.print(F("LMIC: "));
@@ -215,11 +214,11 @@ void onEvent(ev_t ev) {
                 if (LMIC.txrxFlags & TXRX_PORT) {
                     fPort = LMIC.frame[LMIC.dataBeg - 1];
                 }
-                
+
                 // Handle OTA update messages on port 1
                 if (fPort >= 1 && fPort <= OTA_MAX_CHUNKS) {
                     uint8_t* downlinkData = &LMIC.frame[LMIC.dataBeg];
-                    uint8_t downlinkLen = LMIC.dataLen;
+                    uint8_t downlinkLen   = LMIC.dataLen;
                     handleDownlinkMessage(downlinkData, downlinkLen, fPort);
                 }
             }
@@ -297,7 +296,7 @@ void do_send(osjob_t* /* j */) {
 }
 
 // ToDo: Refactor hex string to u1_t array conversion
-void os_getArtEui(u1_t *buf) {
+void os_getArtEui(u1_t* buf) {
     const String cfg = settings_get_string("app_eui");
 
     if (cfg.isEmpty() || cfg.length() < 16) {
@@ -315,8 +314,8 @@ void os_getArtEui(u1_t *buf) {
             return;
         }
 
-        std::string t   = cfg.substring(i, i + 2).c_str();
-        app_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
+        std::string t = cfg.substring(i, i + 2).c_str();
+        app_eui[c]    = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
 
     Serial.print(FPSTR(msg_app_eui));
@@ -328,7 +327,7 @@ void os_getArtEui(u1_t *buf) {
     memcpy_P(buf, app_eui.data(), 8);
 }
 
-void os_getDevEui(u1_t *buf) {
+void os_getDevEui(u1_t* buf) {
     const String cfg = settings_get_string("dev_eui");
 
     if (cfg.isEmpty() || cfg.length() < 16) {
@@ -346,8 +345,8 @@ void os_getDevEui(u1_t *buf) {
             return;
         }
 
-        std::string t   = cfg.substring(i, i + 2).c_str();
-        dev_eui[c] = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
+        std::string t = cfg.substring(i, i + 2).c_str();
+        dev_eui[c]    = static_cast<u1_t>(strtoul(t.c_str(), nullptr, 16));
     }
 
     Serial.print("dev_eui: ");
@@ -359,7 +358,7 @@ void os_getDevEui(u1_t *buf) {
     memcpy_P(buf, dev_eui.data(), 8);
 }
 
-void os_getDevKey(u1_t *buf) {
+void os_getDevKey(u1_t* buf) {
     const String cfg = settings_get_string("app_key");
 
     // Validate the expected length (32 hex chars → 16 bytes)
@@ -401,10 +400,8 @@ void ReadSensors() {
         sd.vBat       = maxlipo.cellVoltage();
         sd.batPercent = maxlipo.cellPercent();
         sd.batRate    = maxlipo.chargeRate();
-#ifdef DEBUG
-        Serial.print(FPSTR(msg_charge_rate));
-        Serial.println(sd.batRate);
-#endif
+        DEBUG_PRINT("----ChargeRate: ");
+        DEBUG_PRINTLN(String(sd.batRate));
     }
     for (int i = 0; i < MAX_SENSOR_READ; i++) {
         float a = static_cast<float>(analogRead(config::SoilSensorPin));
@@ -413,19 +410,17 @@ void ReadSensors() {
     }
     float t                   = sd.soilMoistureValue / static_cast<float>(MAX_SENSOR_READ);
     sd.soilMoistureValue      = t;
-    float x                   = static_cast<float>(map(static_cast<long>(sd.soilMoistureValue), 
+    float x                   = static_cast<float>(map(static_cast<long>(sd.soilMoistureValue),
                                                        get_calibration_air_value(),
                                                        get_calibration_water_value(), 0, 100));
     sd.soilMoisturePercentage = abs(x);
-#ifdef DEBUG
-    Serial.print(F("X: "));
-    Serial.println(x);
-    Serial.print(F("Moisture ADC: "));
-    Serial.print(sd.soilMoistureValue);
-    Serial.print(F(", Moisture Percentage: "));
-    Serial.print(sd.soilMoisturePercentage);
-    Serial.print(F(", vBat "));
-    Serial.println(sd.vBat);
-    Serial.println();
-#endif
+    DEBUG_PRINT("X: ");
+    DEBUG_PRINTLN(String(x));
+    DEBUG_PRINT("Moisture ADC: ");
+    DEBUG_PRINT(String(sd.soilMoistureValue));
+    DEBUG_PRINT(", Moisture Percentage: ");
+    DEBUG_PRINT(String(sd.soilMoisturePercentage));
+    DEBUG_PRINT(", vBat ");
+    DEBUG_PRINTLN(String(sd.vBat));
+    DEBUG_PRINTLN("");
 }

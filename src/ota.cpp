@@ -274,30 +274,70 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         Serial.println("Invalid update info");
         return false;
     }
+    Serial.println("Starting WiFi setup for OTA download...");
+    
+    // Reset watchdog before starting WiFi operations
+    esp_task_wdt_reset();
+    
     // Get saved WiFi credentials
     String ssid     = settings_get_string("wifi_ssid");
     String password = settings_get_string("wifi_password");
+    
+    Serial.printf("SSID from settings: '%s' (length: %d)\r\n", ssid.c_str(), ssid.length());
+    Serial.printf("Password from settings: '%s' (length: %d)\r\n", 
+                  password.length() > 0 ? "[CONFIGURED]" : "[EMPTY]", password.length());
+    
     if (ssid.length() == 0) {
-        Serial.println("No WiFi credentials configured");
+        Serial.println("ERROR: No WiFi SSID configured in settings!");
         return false;
     }
+    
+    // Disconnect any existing WiFi connections and reset state
+    WiFi.disconnect(true);
+    delay(100);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+    
     // Enable WiFi for download
+    Serial.println("Enabling WiFi in STA mode...");
     WiFi.mode(WIFI_STA);
+    delay(100);
+    
+    Serial.printf("Connecting to WiFi SSID: %s\r\n", ssid.c_str());
     WiFi.begin(ssid.c_str(), password.c_str());
-    // Wait for WiFi connection
+    
+    // Wait for WiFi connection with detailed status reporting
     int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    Serial.print("WiFi connection attempts: ");
+    while (WiFi.status() != WL_CONNECTED && attempts < 30) { // Increased timeout
         delay(500);
         Serial.print(".");
         attempts++;
+        
+        // Reset watchdog every few attempts
+        if (attempts % 5 == 0) {
+            esp_task_wdt_reset();
+            Serial.printf("\r\n[Attempt %d/30] WiFi Status: %d\r\n", attempts, WiFi.status());
+            Serial.print("Continuing: ");
+        }
     }
+    
     if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("Failed to connect to WiFi");
+        Serial.printf("\r\nERROR: Failed to connect to WiFi after %d attempts!\r\n", attempts);
+        Serial.printf("Final WiFi status: %d\r\n", WiFi.status());
+        Serial.println("WiFi status codes: 0=IDLE, 1=NO_SSID, 3=CONNECTED, 4=CONNECT_FAILED, 6=DISCONNECTED");
         return false;
     }
-    Serial.println("WiFi connected");
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
+    
+    Serial.printf("\r\nSUCCESS: WiFi connected after %d attempts!\r\n", attempts);
+    Serial.printf("IP Address: %s\r\n", WiFi.localIP().toString().c_str());
+    Serial.printf("Gateway: %s\r\n", WiFi.gatewayIP().toString().c_str());
+    Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
+    Serial.printf("Signal strength: %d dBm\r\n", WiFi.RSSI());
+    
+    // Test connectivity with a simple ping to Google DNS
+    Serial.println("Testing internet connectivity...");
+    esp_task_wdt_reset();
     // Download firmware
     HTTPClient http;
     http.begin(updateInfo.url);

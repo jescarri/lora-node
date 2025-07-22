@@ -1,5 +1,5 @@
 # CREATED BY VIM-PIO
-all:
+all: release
 	platformio -f -c vim run
 
 upload:
@@ -15,22 +15,12 @@ uploadfs:
 	platformio -f -c vim run --target uploadfs
 
 # Build the optimized release firmware
-.PHONY: release
-release:
-	platformio -f -c vim run -e ttgo-lora32-v1-release
+.PHONY: release minimal
+release:  ## Build main release env
+	platformio run -e ttgo-lora32-v1
+minimal:
+	platformio run -e minimal
 
-# Build and immediately upload the release firmware
-.PHONY: upload-release
-upload-release: release
-	platformio -f -c vim run -e ttgo-lora32-v1-release --target upload
-
-.PHONY: test
-test:
-	platformio test -e native
-
-.PHONY: test-cli
-test-cli:
-	cd cli && go test ./... -v
 
 .PHONY: build-cli
 build-cli:

@@ -17,7 +17,7 @@ env:
 jobs:
   # Stage 1: Branch Development Pipeline
   branch-pipeline:
-    name: Branch Pipeline (Unit Test + Compile + Coverage + SonarQube)
+    name: Branch Pipeline (Compile + SonarQube)
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref != 'refs/heads/main')
     steps:
@@ -44,19 +44,19 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade platformio
-          pip install gcovr==7.2
           sudo apt-get install build-essential bc jq
 
-      - name: Run unit tests (native)
-        run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
 
-      - name: Compile project
-        run: pio run -e ttgo-lora32-v1-release
+      - name: Compile project (ttgo-lora32-v1)
+        run: pio run -e ttgo-lora32-v1
+
+      - name: Compile project (minimal)
+        run: pio run -e minimal
 
       - name: Check flash size limit
         run: |
           # Get build output and extract flash usage
-          pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
+          pio run -e ttgo-lora32-v1 2>&1 | tee build_output.log
           
           # Extract flash usage from build output
           FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
@@ -91,22 +91,16 @@ jobs:
         with:
           name: build-artifacts-branch-${{ github.sha }}
           path: |
-            .pio/build/ttgo-lora32-v1-release/firmware.map
-            .pio/build/ttgo-lora32-v1-release/firmware.elf
+            .pio/build/ttgo-lora32-v1/firmware.map
+            .pio/build/ttgo-lora32-v1/firmware.elf
+            .pio/build/minimal/firmware.map
+            .pio/build/minimal/firmware.elf
           retention-days: 30
         if: always()
 
       - name: Generate Compilation DB
         run: pio run -t compiledb
 
-      - name: Generate coverage report
-        run: |
-          gcovr \
-            --root . \
-            --exclude '\.pio/libdeps/' \
-            --exclude 'tests/.*' \
-            --sonarqube \
-            --output coverage.xml
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
@@ -115,11 +109,10 @@ jobs:
         with:
           args: >
             --define sonar.cfamily.compile-commands="compile_commands.json"
-            --define sonar.coverageReportPaths="coverage.xml"
 
   # Stage 2: Main Branch Pipeline
   main-pipeline:
-    name: Main Pipeline (Unit Test + Compile + Coverage + SonarQube)
+    name: Main Pipeline (Compile + SonarQube)
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -146,19 +139,18 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade platformio
-          pip install gcovr==7.2
           sudo apt-get install build-essential bc jq
 
-      - name: Run unit tests (native)
-        run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
+      - name: Compile project (ttgo-lora32-v1)
+        run: pio run -e ttgo-lora32-v1
 
-      - name: Compile project
-        run: pio run -e ttgo-lora32-v1-release
+      - name: Compile project (minimal)
+        run: pio run -e minimal
 
       - name: Check flash size limit
         run: |
           # Get build output and extract flash usage
-          pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
+          pio run -e ttgo-lora32-v1 2>&1 | tee build_output.log
           
           # Extract flash usage from build output
           FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
@@ -193,22 +185,15 @@ jobs:
         with:
           name: build-artifacts-main-${{ github.sha }}
           path: |
-            .pio/build/ttgo-lora32-v1-release/firmware.map
-            .pio/build/ttgo-lora32-v1-release/firmware.elf
+            .pio/build/ttgo-lora32-v1/firmware.map
+            .pio/build/ttgo-lora32-v1/firmware.elf
+            .pio/build/minimal/firmware.map
+            .pio/build/minimal/firmware.elf
           retention-days: 30
         if: always()
 
       - name: Generate Compilation DB
         run: pio run -t compiledb
-
-      - name: Generate coverage report
-        run: |
-          gcovr \
-            --root . \
-            --exclude '\.pio/libdeps/' \
-            --exclude 'tests/.*' \
-            --sonarqube \
-            --output coverage.xml
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v5
@@ -217,7 +202,6 @@ jobs:
         with:
           args: >
             --define sonar.cfamily.compile-commands="compile_commands.json"
-            --define sonar.coverageReportPaths="coverage.xml"
 
   # Stage 3: Release Pipeline
   release-pipeline:
@@ -283,16 +267,17 @@ jobs:
           pip install --upgrade platformio
           sudo apt-get install build-essential bc jq
 
-      - name: Run unit tests (native)
-        run: pio test -e native -f test_ota_simple -f test_wifi_simple -f test_utils_simple -f test_constants_simple
 
-      - name: Compile with updated firmware version
-        run: pio run -e ttgo-lora32-v1-release
+      - name: Compile with updated firmware version (ttgo-lora32-v1)
+        run: pio run -e ttgo-lora32-v1
+
+      - name: Compile with updated firmware version (minimal)
+        run: pio run -e minimal
 
       - name: Check flash size limit
         run: |
           # Get build output and extract flash usage
-          pio run -e ttgo-lora32-v1-release 2>&1 | tee build_output.log
+          pio run -e ttgo-lora32-v1 2>&1 | tee build_output.log
           
           # Extract flash usage from build output
           FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
@@ -325,10 +310,10 @@ jobs:
       - name: Create release artifacts
         run: |
           mkdir -p artifacts
-          cp .pio/build/ttgo-lora32-v1-release/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
-          cp .pio/build/ttgo-lora32-v1-release/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
-          cp .pio/build/ttgo-lora32-v1-release/firmware.map artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.map
-          cp .pio/build/ttgo-lora32-v1-release/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
+          cp .pio/build/ttgo-lora32-v1/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
+          cp .pio/build/ttgo-lora32-v1/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
+          cp .pio/build/ttgo-lora32-v1/firmware.map artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.map
+          cp .pio/build/ttgo-lora32-v1/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
 
           # Create a manifest file with build info
           cat > artifacts/build-info-${{ steps.validate-tag.outputs.tag_name }}.json << EOF

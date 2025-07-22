@@ -38,8 +38,8 @@ jobs:
 
       - name: Build release and capture artifacts
         run: |
-          # Clean build with verbose output - use release environment for size baseline
-          pio run -e ttgo-lora32-v1-release -v > ci-build-release.log 2>&1 || RELEASE_BUILD_FAILED=1
+          # Clean build with verbose output - use ttgo-lora32-v1 environment for size baseline
+          pio run -e ttgo-lora32-v1 -v be ci-build-release.log 21 || RELEASE_BUILD_FAILED=1
           
           # Create baseline artifacts directory
           mkdir -p ci-baseline-artifacts
@@ -48,14 +48,14 @@ jobs:
           cp ci-build-release.log ci-baseline-artifacts/
           
           # Copy generated files if they exist
-          if [ -f ".pio/build/ttgo-lora32-v1-release/firmware.elf" ]; then
-            cp .pio/build/ttgo-lora32-v1-release/firmware.elf ci-baseline-artifacts/release-firmware.elf
+          if [ -f ".pio/build/ttgo-lora32-v1/firmware.elf" ]; then
+            cp .pio/build/ttgo-lora32-v1/firmware.elf ci-baseline-artifacts/release-firmware.elf
           else
             echo "WARNING: release firmware.elf not found" >> ci-baseline-artifacts/build-warnings.txt
           fi
           
-          if [ -f ".pio/build/ttgo-lora32-v1-release/firmware.map" ]; then
-            cp .pio/build/ttgo-lora32-v1-release/firmware.map ci-baseline-artifacts/release-firmware.map
+          if [ -f ".pio/build/ttgo-lora32-v1/firmware.map" ]; then
+            cp .pio/build/ttgo-lora32-v1/firmware.map ci-baseline-artifacts/release-firmware.map
           else
             echo "WARNING: release firmware.map not found" >> ci-baseline-artifacts/build-warnings.txt
           fi
@@ -71,7 +71,7 @@ jobs:
           echo "" >> ci-baseline-artifacts/ci-memory-usage.txt
           
           # Extract RAM and Flash usage from build log
-          echo "RELEASE BUILD (ttgo-lora32-v1-release):" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "TTGO-LORA32-V1 BUILD (ttgo-lora32-v1):" >> ci-baseline-artifacts/ci-memory-usage.txt
           echo "========================================" >> ci-baseline-artifacts/ci-memory-usage.txt
           if grep -q "RAM:\|Flash:" ci-build-release.log; then
             grep -A 2 -B 2 "RAM:\|Flash:" ci-build-release.log >> ci-baseline-artifacts/ci-memory-usage.txt
@@ -91,27 +91,27 @@ jobs:
           
       - name: Build debug and capture artifacts
         run: |
-          # Build debug environment for comparison
-          pio run -e ttgo-lora32-v1-debug -v > ci-build-debug.log 2>&1 || DEBUG_BUILD_FAILED=1
+          # Build minimal environment for comparison
+          pio run -e minimal -v be ci-build-debug.log 21 || DEBUG_BUILD_FAILED=1
           
           # Copy debug build log
           cp ci-build-debug.log ci-baseline-artifacts/
           
           # Copy debug generated files if they exist
-          if [ -f ".pio/build/ttgo-lora32-v1-debug/firmware.elf" ]; then
-            cp .pio/build/ttgo-lora32-v1-debug/firmware.elf ci-baseline-artifacts/debug-firmware.elf
+          if [ -f ".pio/build/minimal/firmware.elf" ]; then
+            cp .pio/build/minimal/firmware.elf ci-baseline-artifacts/debug-firmware.elf
           else
             echo "WARNING: debug firmware.elf not found" >> ci-baseline-artifacts/build-warnings.txt
           fi
           
-          if [ -f ".pio/build/ttgo-lora32-v1-debug/firmware.map" ]; then
-            cp .pio/build/ttgo-lora32-v1-debug/firmware.map ci-baseline-artifacts/debug-firmware.map
+          if [ -f ".pio/build/minimal/firmware.map" ]; then
+            cp .pio/build/minimal/firmware.map ci-baseline-artifacts/debug-firmware.map
           else
             echo "WARNING: debug firmware.map not found" >> ci-baseline-artifacts/build-warnings.txt
           fi
           
           # Add debug build info to memory usage report
-          echo "DEBUG BUILD (ttgo-lora32-v1-debug):" >> ci-baseline-artifacts/ci-memory-usage.txt
+          echo "MINIMAL BUILD (minimal):" >> ci-baseline-artifacts/ci-memory-usage.txt
           echo "====================================" >> ci-baseline-artifacts/ci-memory-usage.txt
           if grep -q "RAM:\|Flash:" ci-build-debug.log; then
             grep -A 2 -B 2 "RAM:\|Flash:" ci-build-debug.log >> ci-baseline-artifacts/ci-memory-usage.txt

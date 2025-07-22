@@ -187,20 +187,43 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
     int i = 0, j = 0;
     int a, b, c, d;
     while (i < length) {
+        // Handle padding and end of string
+        if (input[i] == '=' || input[i] == 0) break;
+        
+        // Find index of first character
         for (a = 0; a < 64 && base64_chars[a] != input[i]; a++);
-        i++;
-        if (a == 64) return false;
+        if (a == 64 || ++i >= length) return false;
+        
+        // Find index of second character
+        if (input[i] == '=' || input[i] == 0) return false;
         for (b = 0; b < 64 && base64_chars[b] != input[i]; b++);
-        i++;
-        if (b == 64) return false;
-        for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
-        i++;
-        if (c == 64) return false;
-        for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
-        i++;
-        if (d == 64) return false;
+        if (b == 64 || ++i >= length) return false;
+        
+        // Decode first byte
         output[j++] = (a << 2) | (b >> 4);
+        
+        // Handle third character (might be padding)
+        if (input[i] == '=' || input[i] == 0) break;
+        for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
+        if (c == 64) {
+            if (input[i] != '=') return false;
+            break;
+        }
+        i++;
+        
+        // Decode second byte
         output[j++] = (b << 4) | (c >> 2);
+        
+        // Handle fourth character (might be padding)
+        if (i >= length || input[i] == '=' || input[i] == 0) break;
+        for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
+        if (d == 64) {
+            if (input[i] != '=') return false;
+            break;
+        }
+        i++;
+        
+        // Decode third byte
         output[j++] = (c << 6) | d;
     }
     return true;

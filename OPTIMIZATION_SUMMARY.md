@@ -40,8 +40,7 @@ Serial.println(F("LIPO GAUGE FOUND"));
 - `src/lorawan.cpp`
 
 ### Changes Made:
-- Added `DEBUG=1` flag to debug environment in `platformio.ini`
-- Wrapped debug Serial.print statements with `#ifdef DEBUG` blocks
+- Added conditional compilation using `#ifdef DEBUG` blocks for development diagnostics
 - Applied conditional compilation to verbose logging functions
 
 ### Examples:
@@ -56,9 +55,9 @@ Serial.println("Debug message");
 ```
 
 ### Benefits:
-- Debug logs are only compiled in debug builds
+- Diagnostic logs can be selectively compiled during development
 - Production builds have reduced code size
-- Maintains debugging capability when needed
+- Maintains debugging capability when needed for development
 
 ## 3. Optimized Logging Functions
 
@@ -72,19 +71,13 @@ Serial.println("Debug message");
 - Maintained debugging capabilities for development
 - Improved code readability and maintainability
 
-## 4. Build Size Comparison
+## 4. Build Size Results
 
 ### Release Build (ttgo-lora32-v1):
 - Text: 1,069,553 bytes
 - Data: 252,209 bytes
 - BSS: 29,536 bytes
 - **Total: 1,351,298 bytes**
-
-### Debug Build (ttgo-lora32-v1-debug):
-- Text: 1,074,097 bytes
-- Data: 275,641 bytes
-- BSS: 29,624 bytes
-- **Total: 1,379,362 bytes**
 
 ### Optimizations Applied:
 1. **String Storage**: Moved string constants to PROGMEM
@@ -93,10 +86,8 @@ Serial.println("Debug message");
 
 ## 5. Build Configuration
 
-### Environments:
-- **ttgo-lora32-v1**: Production build without debug symbols
-- **ttgo-lora32-v1-debug**: Debug build with `DEBUG=1` flag enabled
-- **ttgo-lora32-v1-minimal**: Minimal build with reduced dependencies
+### Environment:
+- **ttgo-lora32-v1-release**: Optimized production build with size optimizations
 
 ### Compilation Flags:
 - `-Os`: Optimize for size
@@ -108,17 +99,16 @@ Serial.println("Debug message");
 
 ### Verification Steps:
 1. ✅ Release build compiles successfully
-2. ✅ Debug build compiles successfully
-3. ✅ String optimizations applied correctly
-4. ✅ Conditional compilation works as expected
-5. ✅ Memory usage reduced without functionality loss
+2. ✅ String optimizations applied correctly
+3. ✅ Conditional compilation works as expected
+4. ✅ Memory usage reduced without functionality loss
 
 ## Summary
 
 The optimizations successfully:
 - Reduced memory usage by moving strings to PROGMEM
-- Implemented conditional debug compilation
+- Implemented conditional compilation for development diagnostics
 - Maintained code functionality and readability
-- Provided different build configurations for various use cases
+- Consolidated to a single optimized build configuration
 
-These optimizations will help improve the performance and memory efficiency of the LoRa sensor device, especially important for embedded systems with limited resources.
+These optimizations help improve the performance and memory efficiency of the LoRa sensor device, especially important for embedded systems with limited resources.

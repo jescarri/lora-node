@@ -1,18 +1,16 @@
 #ifndef OTA_HPP_
 #define OTA_HPP_
 
-constexpr int OTA_MAX_CHUNKS = 20;  // Increased for larger payloads
-constexpr int OTA_CHUNK_SIZE = 70;  // Increased to accommodate base64 encoded payloads
-constexpr int OTA_MAX_BUFFER_SIZE = OTA_MAX_CHUNKS * OTA_CHUNK_SIZE;  // Total buffer size
+constexpr int OTA_MAX_CHUNKS      = 20;                                     // Increased for larger payloads
+constexpr int OTA_CHUNK_SIZE      = 70;                                     // Increased to accommodate base64 encoded payloads
+constexpr int OTA_MAX_BUFFER_SIZE = OTA_MAX_CHUNKS * OTA_CHUNK_SIZE;        // Total buffer size
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "config.hpp"
-#ifndef UNIT_TEST
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <Update.h>
-#endif
 #include <CayenneLPP.h>
 
 // OTA Parse Result enum
@@ -27,7 +25,7 @@ struct OtaUpdateInfo {
     String url;
     String md5sum;
     String version;
-    String signature; // cryptographic signature (base64)
+    String signature;        // cryptographic signature (base64)
     bool valid;
 };
 
@@ -59,12 +57,7 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo);
 bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5);
 void reportFirmwareVersion(CayenneLPP& lpp);
 bool testWifiConnection(const String& ssid, const String& password);
-#ifdef UNIT_TEST
-#include <string>
-bool verify_signature(const std::string& url, const std::string& md5sum, const std::string& signature_b64);
-#else
 bool verify_signature(const String& url, const String& md5sum, const String& signature_b64);
-#endif
 
 // OTA state management functions
 void setOtaInProgress(bool inProgress);

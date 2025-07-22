@@ -3,9 +3,8 @@
 #include "menu.hpp"
 #include "utils.hpp"
 #include "version.hpp"
-#ifndef UNIT_TEST
+#include "debug.hpp"
 #include <sodium.h>
-#endif
 
 // OTA state
 volatile bool ota_in_progress = false;
@@ -14,23 +13,23 @@ OtaChunkBuffer ota_chunk_buffer;
 // Update handleOtaChunk to use ota_chunk_buffer.addChunk, isComplete, and getJsonString
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     int idx = fport - 1;
-    Serial.printf("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\r\n", fport, idx, dataLen);
-    Serial.print("[OTA] Chunk data: ");
-    for (int i = 0; i < dataLen; ++i) Serial.printf("%02X ", data[i]);
-    Serial.printf("\r\n");
+    DEBUG_PRINTF("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\r\n", fport, idx, dataLen);
+    DEBUG_PRINT("[OTA] Chunk data: ");
+    for (int i = 0; i < dataLen; ++i) DEBUG_PRINTF("%02X ", data[i]);
+    DEBUG_PRINTF("\r\n");
     if (idx < 0 || idx >= OTA_MAX_CHUNKS) {
-        Serial.printf("[OTA] Invalid chunk index: %d\r\n", idx);
+        DEBUG_PRINTF("[OTA] Invalid chunk index: %d\r\n", idx);
         return;
     }
     if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) {
-        Serial.printf("[OTA] Failed to add chunk idx=%d len=%d\r\n", idx, dataLen);
+        DEBUG_PRINTF("[OTA] Failed to add chunk idx=%d len=%d\r\n", idx, dataLen);
         return;
     }
-    Serial.printf("[OTA] Chunk %d added. Checking completeness...\r\n", idx);
+    DEBUG_PRINTF("[OTA] Chunk %d added. Checking completeness...\r\n", idx);
     if (ota_chunk_buffer.isComplete()) {
-        Serial.println("[OTA] All chunks received. Attempting reassembly and JSON parse...");
+        DEBUG_PRINTLN("[OTA] All chunks received. Attempting reassembly and JSON parse...");
         String json = ota_chunk_buffer.getJsonString();
-        Serial.printf("[OTA] Reassembled JSON (%d bytes): %s\r\n", json.length(), json.c_str());
+        DEBUG_PRINTF("[OTA] Reassembled JSON (%d bytes): %s\r\n", json.length(), json.c_str());
         JsonDocument doc;
         auto error = deserializeJson(doc, json);
         if (!error) {
@@ -94,23 +93,23 @@ void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
                 ota_chunk_buffer.reset();
             }
         } else {
-            Serial.printf("[OTA] JSON parse failed: %s\r\n", error.c_str());
+            DEBUG_PRINTF("[OTA] JSON parse failed: %s\r\n", error.c_str());
         }
         // else: wait for more chunks or reset on fatal error
     } else {
-        Serial.println("[OTA] Waiting for more chunks...");
+        DEBUG_PRINTLN("[OTA] Waiting for more chunks...");
     }
 }
 
 void handleDownlinkMessage(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     Serial.printf("Downlink received: fport=%d, len=%d\r\n", fport, dataLen);
-    
+
     // Handle OTA chunks (fport 1-20)
     if (fport >= 1 && fport <= OTA_MAX_CHUNKS) {
         handleOtaChunk(data, dataLen, fport);
         return;
     }
-    
+
     // Handle other downlink messages
     Serial.println("Non-OTA downlink message");
 }
@@ -120,15 +119,15 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     if (data == nullptr || dataLen == 0) {
         return false;
     }
-    
+
     String jsonString = String(reinterpret_cast<const char*>(data), dataLen);
     JsonDocument doc;
     auto error = deserializeJson(doc, jsonString);
-    
+
     if (error) {
         return false;
     }
-    
+
     // Extract fields
     if (doc.containsKey("url")) {
         updateInfo.url = doc["url"].as<String>();
@@ -137,7 +136,7 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     } else {
         return false;
     }
-    
+
     if (doc.containsKey("md5sum")) {
         updateInfo.md5sum = doc["md5sum"].as<String>();
     } else if (doc.containsKey("m")) {
@@ -145,7 +144,7 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     } else {
         return false;
     }
-    
+
     if (doc.containsKey("version")) {
         updateInfo.version = doc["version"].as<String>();
     } else if (doc.containsKey("v")) {
@@ -153,7 +152,7 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     } else {
         return false;
     }
-    
+
     if (doc.containsKey("signature")) {
         updateInfo.signature = doc["signature"].as<String>();
     } else if (doc.containsKey("s")) {
@@ -161,7 +160,7 @@ bool parseOtaMessage(const uint8_t* data, uint8_t dataLen, OtaUpdateInfo& update
     } else {
         return false;
     }
-    
+
     updateInfo.valid = true;
     return verify_signature(updateInfo.url, updateInfo.md5sum, updateInfo.signature);
 }
@@ -207,12 +206,6 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
     return true;
 }
 
-#ifdef UNIT_TEST
-bool verify_signature(const std::string& url, const std::string& md5sum, const std::string& signature_b64) {
-    // For unit test, simulate signature as url+md5sum == "goodurlgoodmd5" and signature == "VALIDSIG"
-    return (url + md5sum) == "goodurlgoodmd5" && signature_b64 == "VALIDSIG";
-}
-#else
 bool verify_signature(const String& url, const String& md5sum, const String& signature_b64) {
     if (url.length() == 0 || md5sum.length() == 0 || signature_b64.length() == 0) {
         Serial.println("Empty url, md5sum, or signature");
@@ -231,8 +224,8 @@ bool verify_signature(const String& url, const String& md5sum, const String& sig
         return false;
     }
     for (int i = 0; i < 32; i++) {
-        char hex_byte[3] = {pubkey_hex[i*2], pubkey_hex[i*2+1], 0};
-        pubkey[i] = strtol(hex_byte, NULL, 16);
+        char hex_byte[3] = {pubkey_hex[i * 2], pubkey_hex[i * 2 + 1], 0};
+        pubkey[i]        = strtol(hex_byte, NULL, 16);
     }
     // Decode base64 signature
     int sig_len = base64_dec_len(signature_b64.c_str(), signature_b64.length());
@@ -250,9 +243,7 @@ bool verify_signature(const String& url, const String& md5sum, const String& sig
     Serial.println("Signature verification successful");
     return true;
 }
-#endif
 
-#ifndef UNIT_TEST
 #include <mbedtls/md5.h>
 bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     if (!updateInfo.valid) {
@@ -260,7 +251,7 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         return false;
     }
     // Get saved WiFi credentials
-    String ssid = settings_get_string("wifi_ssid");
+    String ssid     = settings_get_string("wifi_ssid");
     String password = settings_get_string("wifi_password");
     if (ssid.length() == 0) {
         Serial.println("No WiFi credentials configured");
@@ -281,7 +272,8 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         return false;
     }
     Serial.println("WiFi connected");
-    Serial.print("IP: "); Serial.println(WiFi.localIP());
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
     // Download firmware
     HTTPClient http;
     http.begin(updateInfo.url);
@@ -308,11 +300,11 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     std::vector<uint8_t> fw_buf;
     fw_buf.reserve(contentLength);
     WiFiClient* stream = http.getStreamPtr();
-    int total_read = 0;
+    int total_read     = 0;
     while (total_read < contentLength) {
         uint8_t buf[512];
         int to_read = std::min(512, contentLength - total_read);
-        int n = stream->read(buf, to_read);
+        int n       = stream->read(buf, to_read);
         if (n <= 0) break;
         fw_buf.insert(fw_buf.end(), buf, buf + n);
         total_read += n;
@@ -349,14 +341,7 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     Serial.println("OTA update completed successfully");
     return true;
 }
-#else
-// Stub for unit test
-bool downloadAndInstallFirmware(const OtaUpdateInfo&) {
-    return true;
-}
-#endif
 
-#ifndef UNIT_TEST
 bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5) {
     if (data == nullptr || dataLen == 0 || expectedMd5.length() == 0) {
         return false;
@@ -373,16 +358,13 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
         calculatedMd5 += String(hash[i], HEX);
     }
 
-    Serial.print("Calculated MD5: "); Serial.println(calculatedMd5);
-    Serial.print("Expected MD5: "); Serial.println(expectedMd5);
+    Serial.print("Calculated MD5: ");
+    Serial.println(calculatedMd5);
+    Serial.print("Expected MD5: ");
+    Serial.println(expectedMd5);
 
     return calculatedMd5.equalsIgnoreCase(expectedMd5);
 }
-#else
-bool verifyMd5Sum(const uint8_t*, size_t, const String&) {
-    return true;
-}
-#endif
 
 void reportFirmwareVersion(CayenneLPP& lpp) {
     // Use CayenneLPP generic sensor to report firmware version as integer
@@ -396,7 +378,6 @@ int getFirmwareVersionInt() {
     return version::getFirmwareVersionInt();
 }
 
-#ifndef UNIT_TEST
 bool testWifiConnection(const String& ssid, const String& password) {
     if (ssid.length() == 0) {
         return false;
@@ -404,7 +385,7 @@ bool testWifiConnection(const String& ssid, const String& password) {
 
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
-    
+
     // Try to connect for 10 seconds
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
@@ -412,26 +393,22 @@ bool testWifiConnection(const String& ssid, const String& password) {
         Serial.print(".");
         attempts++;
     }
-    
+
     bool connected = (WiFi.status() == WL_CONNECTED);
 
     if (connected) {
         Serial.println("WiFi test connection successful");
-        Serial.print("IP: "); Serial.println(WiFi.localIP());
+        Serial.print("IP: ");
+        Serial.println(WiFi.localIP());
     } else {
         Serial.println("WiFi test connection failed");
     }
 
     // Disconnect for testing
     WiFi.disconnect();
-    
+
     return connected;
 }
-#else
-bool testWifiConnection(const String&, const String&) {
-    return true;
-}
-#endif
 
 void setOtaInProgress(bool inProgress) {
     ota_in_progress = inProgress;
@@ -448,7 +425,7 @@ bool OtaChunkBuffer::addChunk(int chunk_index, const uint8_t* data, int data_len
     if (data_len > OTA_CHUNK_SIZE) return false;
     memcpy(decoded_chunks[chunk_index], data, data_len);
     chunk_lens[chunk_index] = data_len;
-    received[chunk_index] = true;
+    received[chunk_index]   = true;
     if (chunk_index > max_chunk_seen) max_chunk_seen = chunk_index;
     return true;
 }

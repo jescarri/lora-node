@@ -16,11 +16,8 @@
 namespace config {
 
 // Debug control --------------------------------------------------------------
-#ifdef DEBUG_SERIAL
-    constexpr bool EnableDebug = true;
-#else
-    constexpr bool EnableDebug = false;
-#endif
+// Debug is now compile-time disabled for optimized builds
+constexpr bool EnableDebug = false;
 
 // SX127x / LMIC wiring -------------------------------------------------------
 constexpr int PinLmicNss  = 18;
@@ -30,12 +27,12 @@ constexpr int PinLmicDio1 = 33;
 constexpr int PinLmicDio2 = 32;
 
 // LoRaWAN / payload ----------------------------------------------------------
-constexpr int MaxPayloadSize = 200;  // Increased to accommodate OTA messages
+constexpr int MaxPayloadSize = 200;        // Increased to accommodate OTA messages
 
 // Sensors --------------------------------------------------------------------
-constexpr int SoilSensorPin = 34;     // ADC1_CH6
-constexpr int AirValue      = 2200;   // Dry calibration value
-constexpr int WaterValue    = 380;    // Wet calibration value
+constexpr int SoilSensorPin = 34;          // ADC1_CH6
+constexpr int AirValue      = 2200;        // Dry calibration value
+constexpr int WaterValue    = 380;         // Wet calibration value
 
 // Misc -----------------------------------------------------------------------
 constexpr int MaxSensorRead = 1;
@@ -44,10 +41,9 @@ constexpr int MaxSensorRead = 1;
 // The FIRMWARE_VERSION is set by the CI/CD pipeline during compilation
 // Format: 3-digit integer (e.g., 100 for v1.0.0, 110 for v1.1.0, 112 for v1.1.2)
 #ifdef FIRMWARE_VERSION
-    constexpr int FirmwareVersionInt = static_cast<int>(FIRMWARE_VERSION);
+constexpr int FirmwareVersionInt = static_cast<int>(FIRMWARE_VERSION);
 #else
-    constexpr int FirmwareVersionInt = 0; // Development build
+constexpr int FirmwareVersionInt = 0;        // Development build
 #endif
 
-} // namespace config
-
+}        // namespace config

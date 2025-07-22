@@ -38,7 +38,7 @@ extern bool maxLipoFound;
 extern Adafruit_MAX17048 maxlipo;
 
 void LoraWANPrintLMICOpmode(void);
-void LoraWANDebug(const lmic_t& lmic_check);
+void LoraWANDebug(const lmic_t &lmic_check);
 void PrintLMICVersion();
 void onEvent(ev_t ev);
 void do_send(osjob_t *j);

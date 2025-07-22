@@ -20,7 +20,7 @@
 // After the call `buf` is always null-terminated, regardless of the length of
 // `source_c_str()`.
 template <std::size_t N>
-inline void safe_strncpy(char (&dest)[N], const char *src) {
+inline void safe_strncpy(char (&dest)[N], const char* src) {
     static_assert(N > 0, "Destination buffer must not be empty");
     if (src == nullptr) {
         dest[0] = '\0';

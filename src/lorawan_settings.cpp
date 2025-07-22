@@ -20,7 +20,7 @@ Preferences &prefs() {
     static Preferences instance;
     return instance;
 }
-} // namespace
+}        // namespace
 
 void lorawan_preferences_init() {
     prefs().begin(LMIC_PREF_NS_NAME, RW_MODE);
@@ -32,7 +32,7 @@ bool lmic_init_needed() {
 
 void lmic_save() {
     LMIC.globalDutyAvail = 0;
-    size_t a = prefs().putBytes(LMIC_BYTES_KEY_NAME, &LMIC, sizeof(LMIC));
+    size_t a             = prefs().putBytes(LMIC_BYTES_KEY_NAME, &LMIC, sizeof(LMIC));
     Serial.print("Saved: ");
     Serial.println(a);
 }

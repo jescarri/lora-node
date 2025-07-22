@@ -8,8 +8,8 @@
 #include <lmic.h>
 
 constexpr int CONFIG_TIMEOUT_SECONDS = 120;
-constexpr int APP_EUID_LEN = 17;
-constexpr int MAX_INT_STR_LEN = 10;
+constexpr int APP_EUID_LEN           = 17;
+constexpr int MAX_INT_STR_LEN        = 10;
 
 extern CRGB leds[1];
 

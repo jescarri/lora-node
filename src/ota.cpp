@@ -5,6 +5,7 @@
 #include "version.hpp"
 #include "debug.hpp"
 #include <sodium.h>
+#include <esp_task_wdt.h>
 
 // OTA state
 volatile bool ota_in_progress = false;
@@ -331,6 +332,14 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         if (n <= 0) break;
         fw_buf.insert(fw_buf.end(), buf, buf + n);
         total_read += n;
+        
+        // Reset watchdog every 512 bytes to prevent timeout
+        esp_task_wdt_reset();
+        
+        // Print progress every 10KB
+        if (total_read % 10240 == 0) {
+            Serial.printf("Downloaded %d/%d bytes\r\n", total_read, contentLength);
+        }
     }
     http.end();
     Serial.printf("Downloaded %d bytes\r\n", (int)fw_buf.size());

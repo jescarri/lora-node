@@ -47,31 +47,27 @@ jobs:
           sudo apt-get install build-essential bc jq
 
 
-      - name: Compile project (ttgo-lora32-v1)
-        run: pio run -e ttgo-lora32-v1
+      - name: Compile project (release)
+        run: make release
 
       - name: Compile project (minimal)
-        run: pio run -e minimal
+        run: make minimal
 
       - name: Check flash size limit
         run: |
-          # Get build output and extract flash usage
-          pio run -e ttgo-lora32-v1 2>&1 | tee build_output.log
+          # Parse the ELF file that was already built to extract flash usage
+          ELF_FILE=".pio/build/ttgo-lora32-v1/firmware.elf"
           
-          # Extract flash usage from build output
-          FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
-          
-          if [ -z "$FLASH_USED" ]; then
-            echo "⚠️  Warning: Could not extract flash usage from build output"
-            echo "Looking for alternative patterns..."
-            # Try alternative patterns
-            FLASH_USED=$(grep -oP 'used \K\d+' build_output.log | tail -n 1)
+          if [ ! -f "$ELF_FILE" ]; then
+            echo "❌ ERROR: ELF file not found at $ELF_FILE"
+            exit 1
           fi
           
-          if [ -z "$FLASH_USED" ]; then
-            echo "❌ ERROR: Could not determine flash usage from build output"
-            echo "Build output (last 20 lines):"
-            tail -n 20 build_output.log
+          # Extract flash usage from ELF file using size command
+          FLASH_USED=$(size "$ELF_FILE" | tail -n 1 | awk '{print $1 + $2}')
+          
+          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" -eq 0 ]; then
+            echo "❌ ERROR: Could not determine flash usage from ELF file"
             exit 1
           fi
           
@@ -141,31 +137,27 @@ jobs:
           pip install --upgrade platformio
           sudo apt-get install build-essential bc jq
 
-      - name: Compile project (ttgo-lora32-v1)
-        run: pio run -e ttgo-lora32-v1
+      - name: Compile project (release)
+        run: make release
 
       - name: Compile project (minimal)
-        run: pio run -e minimal
+        run: make minimal
 
       - name: Check flash size limit
         run: |
-          # Get build output and extract flash usage
-          pio run -e ttgo-lora32-v1 2>&1 | tee build_output.log
+          # Parse the ELF file that was already built to extract flash usage
+          ELF_FILE=".pio/build/ttgo-lora32-v1/firmware.elf"
           
-          # Extract flash usage from build output
-          FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
-          
-          if [ -z "$FLASH_USED" ]; then
-            echo "⚠️  Warning: Could not extract flash usage from build output"
-            echo "Looking for alternative patterns..."
-            # Try alternative patterns
-            FLASH_USED=$(grep -oP 'used \K\d+' build_output.log | tail -n 1)
+          if [ ! -f "$ELF_FILE" ]; then
+            echo "❌ ERROR: ELF file not found at $ELF_FILE"
+            exit 1
           fi
           
-          if [ -z "$FLASH_USED" ]; then
-            echo "❌ ERROR: Could not determine flash usage from build output"
-            echo "Build output (last 20 lines):"
-            tail -n 20 build_output.log
+          # Extract flash usage from ELF file using size command
+          FLASH_USED=$(size "$ELF_FILE" | tail -n 1 | awk '{print $1 + $2}')
+          
+          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" -eq 0 ]; then
+            echo "❌ ERROR: Could not determine flash usage from ELF file"
             exit 1
           fi
           
@@ -268,31 +260,27 @@ jobs:
           sudo apt-get install build-essential bc jq
 
 
-      - name: Compile with updated firmware version (ttgo-lora32-v1)
-        run: pio run -e ttgo-lora32-v1
+      - name: Compile project (release)
+        run: make release
 
-      - name: Compile with updated firmware version (minimal)
-        run: pio run -e minimal
+      - name: Compile project (minimal)
+        run: make minimal
 
       - name: Check flash size limit
         run: |
-          # Get build output and extract flash usage
-          pio run -e ttgo-lora32-v1 2>&1 | tee build_output.log
+          # Parse the ELF file that was already built to extract flash usage
+          ELF_FILE=".pio/build/ttgo-lora32-v1/firmware.elf"
           
-          # Extract flash usage from build output
-          FLASH_USED=$(grep -oP 'Flash:.*used \K\d+' build_output.log | tail -n 1)
-          
-          if [ -z "$FLASH_USED" ]; then
-            echo "⚠️  Warning: Could not extract flash usage from build output"
-            echo "Looking for alternative patterns..."
-            # Try alternative patterns
-            FLASH_USED=$(grep -oP 'used \K\d+' build_output.log | tail -n 1)
+          if [ ! -f "$ELF_FILE" ]; then
+            echo "❌ ERROR: ELF file not found at $ELF_FILE"
+            exit 1
           fi
           
-          if [ -z "$FLASH_USED" ]; then
-            echo "❌ ERROR: Could not determine flash usage from build output"
-            echo "Build output (last 20 lines):"
-            tail -n 20 build_output.log
+          # Extract flash usage from ELF file using size command
+          FLASH_USED=$(size "$ELF_FILE" | tail -n 1 | awk '{print $1 + $2}')
+          
+          if [ -z "$FLASH_USED" ] || [ "$FLASH_USED" -eq 0 ]; then
+            echo "❌ ERROR: Could not determine flash usage from ELF file"
             exit 1
           fi
           

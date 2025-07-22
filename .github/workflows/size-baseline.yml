@@ -7,6 +7,7 @@ on:
 
 env:
   PLATFORMIO_CACHE_DIR: ~/.platformio/.cache
+  PLATFORMIO_BUILD_FLAGS: -v
 
 jobs:
   capture-size-baseline:
@@ -39,7 +40,7 @@ jobs:
       - name: Build release and capture artifacts
         run: |
           # Clean build with verbose output - use ttgo-lora32-v1 environment for size baseline
-          pio run -e ttgo-lora32-v1 -v be ci-build-release.log 21 || RELEASE_BUILD_FAILED=1
+          make release >&1 | tee ci-build-release.log 2>&1 || RELEASE_BUILD_FAILED=1
           
           # Create baseline artifacts directory
           mkdir -p ci-baseline-artifacts
@@ -92,7 +93,7 @@ jobs:
       - name: Build debug and capture artifacts
         run: |
           # Build minimal environment for comparison
-          pio run -e minimal -v be ci-build-debug.log 21 || DEBUG_BUILD_FAILED=1
+          make minimal >&1 | tee ci-build-debug.log 2>&1 || DEBUG_BUILD_FAILED=1
           
           # Copy debug build log
           cp ci-build-debug.log ci-baseline-artifacts/

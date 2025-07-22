@@ -76,6 +76,14 @@ This project uses a single optimized build configuration:
 
 For detailed build information, see [docs/BUILD.md](docs/BUILD.md).
 
+## Build Commands
+
+- `make release`: Build the main release environment (ttgo-lora32-v1)
+- `make minimal`: Build the minimal environment for comparison
+- For verbose output, set environment variable: `PLATFORMIO_BUILD_FLAGS=-v`
+  
+  Example: `PLATFORMIO_BUILD_FLAGS=-v make release`
+
 # Node Provisioning
 
 1. Build the firmware and upload it to the board.

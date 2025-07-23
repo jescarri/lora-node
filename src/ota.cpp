@@ -607,12 +607,21 @@ bool isOtaInProgress() {
 
 // --- OtaChunkBuffer methods for chunked OTA reassembly ---
 bool OtaChunkBuffer::addChunk(int chunk_index, const uint8_t* data, int data_len) {
-    if (chunk_index < 0 || chunk_index >= OTA_MAX_CHUNKS) return false;
-    if (data_len > OTA_CHUNK_SIZE) return false;
+    if (chunk_index < 0 || chunk_index >= OTA_MAX_CHUNKS) {
+        Serial.printf("[DEBUG] Chunk index %d out of range (0-%d)\r\n", chunk_index, OTA_MAX_CHUNKS-1);
+        return false;
+    }
+    if (data_len > OTA_CHUNK_SIZE) {
+        Serial.printf("[DEBUG] Chunk data length %d exceeds max %d\r\n", data_len, OTA_CHUNK_SIZE);
+        return false;
+    }
     memcpy(decoded_chunks[chunk_index], data, data_len);
     chunk_lens[chunk_index] = data_len;
     received[chunk_index]   = true;
     if (chunk_index > max_chunk_seen) max_chunk_seen = chunk_index;
+    
+    Serial.printf("[DEBUG] Added chunk %d: %d bytes (max_chunk_seen=%d)\r\n", chunk_index, data_len, max_chunk_seen);
+    
     return true;
 }
 

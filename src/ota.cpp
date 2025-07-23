@@ -333,13 +333,36 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
     Serial.printf("Signal strength: %d dBm\r\n", WiFi.RSSI());
 
-    // Test connectivity with a simple ping to Google DNS
+    // Test connectivity with a simple HTTP request
     Serial.println("Testing internet connectivity...");
     esp_task_wdt_reset();
+    
+    // Quick connectivity test with Google's public DNS over HTTP
+    HTTPClient testHttp;
+    testHttp.begin("http://httpbin.org/status/200");  // Simple endpoint that returns 200
+    testHttp.setTimeout(10000);  // 10 second timeout for connectivity test
+    testHttp.setConnectTimeout(5000);  // 5 second connection timeout
+    
+    int testCode = testHttp.GET();
+    testHttp.end();
+    
+    if (testCode != HTTP_CODE_OK) {
+        Serial.printf("Internet connectivity test failed with code: %d\r\n", testCode);
+        Serial.println("Attempting OTA download anyway...");
+    } else {
+        Serial.println("Internet connectivity test successful");
+    }
+    
+    esp_task_wdt_reset();
+    
     // Download firmware
     HTTPClient http;
     http.begin(updateInfo.url);
 
+    // Configure HTTP timeouts for better reliability
+    http.setTimeout(30000);  // 30 second timeout for the entire request
+    http.setConnectTimeout(15000);  // 15 second timeout for initial connection
+    
     // Enable following redirects (important for URL shorteners like TinyURL)
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     http.setRedirectLimit(10);        // Allow up to 10 redirects

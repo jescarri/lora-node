@@ -135,9 +135,19 @@ void setup() {
     FastLED.setBrightness(50);
     lorawan_preferences_init();
     Serial.print(FPSTR(msg_lmic_config_present));
-    startWebConfig = !digitalRead(START_WEB_CONFIG_PIN);
+    Serial.print("Button pin raw value: ");
+    int pinValue = digitalRead(START_WEB_CONFIG_PIN);
+    Serial.println(pinValue);
+    startWebConfig = (pinValue == 0);  // Explicitly check for LOW
+    Serial.print("startWebConfig set to: ");
+    Serial.println(startWebConfig ? 1 : 0);
     bool otaa_cfg  = settings_has_key("ttn_otaa_config");
-
+    Serial.print("WEBCONF: ");
+    if (startWebConfig) {
+        Serial.println("true");
+    } else {
+        Serial.println("false");
+    }
     if ((startWebConfig == true) || (!otaa_cfg)) {
         setCpuFrequencyMhz(80);
         Serial.updateBaudRate(115200);

@@ -4,7 +4,6 @@
 #include "menu.hpp"
 #include "utils.hpp"
 #include "version.hpp"
-#include "debug.hpp"
 #include <sodium.h>
 #include <esp_task_wdt.h>
 #include <lmic.h>
@@ -16,23 +15,14 @@ OtaChunkBuffer ota_chunk_buffer;
 // Update handleOtaChunk to use ota_chunk_buffer.addChunk, isComplete, and getJsonString
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     int idx = fport - 1;
-    DEBUG_PRINTF("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\r\n", fport, idx, dataLen);
-    DEBUG_PRINT("[OTA] Chunk data: ");
-    for (int i = 0; i < dataLen; ++i) DEBUG_PRINTF("%02X ", data[i]);
-    DEBUG_PRINTF("\r\n");
     if (idx < 0 || idx >= OTA_MAX_CHUNKS) {
-        DEBUG_PRINTF("[OTA] Invalid chunk index: %d\r\n", idx);
         return;
     }
     if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) {
-        DEBUG_PRINTF("[OTA] Failed to add chunk idx=%d len=%d\r\n", idx, dataLen);
         return;
     }
-    DEBUG_PRINTF("[OTA] Chunk %d added. Checking completeness...\r\n", idx);
     if (ota_chunk_buffer.isComplete()) {
-        DEBUG_PRINTLN("[OTA] All chunks received. Attempting reassembly and JSON parse...");
         String json = ota_chunk_buffer.getJsonString();
-        DEBUG_PRINTF("[OTA] Reassembled JSON (%d bytes): %s\r\n", json.length(), json.c_str());
         JsonDocument doc;
         auto error = deserializeJson(doc, json);
         if (!error) {
@@ -95,12 +85,7 @@ void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
                 setOtaInProgress(false);
                 ota_chunk_buffer.reset();
             }
-        } else {
-            DEBUG_PRINTF("[OTA] JSON parse failed: %s\r\n", error.c_str());
         }
-        // else: wait for more chunks or reset on fatal error
-    } else {
-        DEBUG_PRINTLN("[OTA] Waiting for more chunks...");
     }
 }
 
@@ -192,19 +177,19 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
     while (i < length) {
         // Handle padding and end of string
         if (input[i] == '=' || input[i] == 0) break;
-        
+
         // Find index of first character
         for (a = 0; a < 64 && base64_chars[a] != input[i]; a++);
         if (a == 64 || ++i >= length) return false;
-        
+
         // Find index of second character
         if (input[i] == '=' || input[i] == 0) return false;
         for (b = 0; b < 64 && base64_chars[b] != input[i]; b++);
         if (b == 64 || ++i >= length) return false;
-        
+
         // Decode first byte
         output[j++] = (a << 2) | (b >> 4);
-        
+
         // Handle third character (might be padding)
         if (input[i] == '=' || input[i] == 0) break;
         for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
@@ -213,10 +198,10 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
             break;
         }
         i++;
-        
+
         // Decode second byte
         output[j++] = (b << 4) | (c >> 2);
-        
+
         // Handle fourth character (might be padding)
         if (i >= length || input[i] == '=' || input[i] == 0) break;
         for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
@@ -225,7 +210,7 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
             break;
         }
         i++;
-        
+
         // Decode third byte
         output[j++] = (c << 6) | d;
     }
@@ -276,58 +261,61 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         Serial.println("Invalid update info");
         return false;
     }
+    setCpuFrequencyMhz(80);
+    Serial.updateBaudRate(115200);
+    delay(100);
     Serial.println("Starting WiFi setup for OTA download...");
-    
+
     // Reset watchdog before starting WiFi operations
     esp_task_wdt_reset();
-    
+
     // Suspend LMIC operations to prevent WiFi interference
     Serial.println("Suspending LoRaWAN operations for WiFi...");
     extern struct lmic_t LMIC;
     uint8_t saved_opmode = LMIC.opmode;
-    LMIC.opmode |= OP_SHUTDOWN;  // Temporarily shutdown LMIC
-    
+    LMIC.opmode |= OP_SHUTDOWN;        // Temporarily shutdown LMIC
+
     // Stop any ongoing LMIC operations
     os_clearCallback(&sendjob);
-    
+
     // Give some time for LMIC to settle
     delay(100);
-    
+
     // Get saved WiFi credentials
     String ssid     = settings_get_string("wifi_ssid");
     String password = settings_get_string("wifi_password");
-    
+
     Serial.printf("SSID from settings: '%s' (length: %d)\r\n", ssid.c_str(), ssid.length());
-    Serial.printf("Password from settings: '%s' (length: %d)\r\n", 
+    Serial.printf("Password from settings: '%s' (length: %d)\r\n",
                   password.length() > 0 ? "[CONFIGURED]" : "[EMPTY]", password.length());
-    
+
     if (ssid.length() == 0) {
         Serial.println("ERROR: No WiFi SSID configured in settings!");
         return false;
     }
-    
+
     // Disconnect any existing WiFi connections and reset state
     WiFi.disconnect(true);
     delay(100);
     WiFi.mode(WIFI_OFF);
     delay(100);
-    
+
     // Enable WiFi for download
     Serial.println("Enabling WiFi in STA mode...");
     WiFi.mode(WIFI_STA);
     delay(100);
-    
+
     Serial.printf("Connecting to WiFi SSID: %s\r\n", ssid.c_str());
     WiFi.begin(ssid.c_str(), password.c_str());
-    
+
     // Wait for WiFi connection with detailed status reporting
     int attempts = 0;
     Serial.print("WiFi connection attempts: ");
-    while (WiFi.status() != WL_CONNECTED && attempts < 30) { // Increased timeout
+    while (WiFi.status() != WL_CONNECTED && attempts < 30) {        // Increased timeout
         delay(500);
         Serial.print(".");
         attempts++;
-        
+
         // Reset watchdog every few attempts
         if (attempts % 5 == 0) {
             esp_task_wdt_reset();
@@ -335,45 +323,45 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
             Serial.print("Continuing: ");
         }
     }
-    
+
     if (WiFi.status() != WL_CONNECTED) {
         Serial.printf("\r\nERROR: Failed to connect to WiFi after %d attempts!\r\n", attempts);
         Serial.printf("Final WiFi status: %d\r\n", WiFi.status());
         Serial.println("WiFi status codes: 0=IDLE, 1=NO_SSID, 3=CONNECTED, 4=CONNECT_FAILED, 6=DISCONNECTED");
         return false;
     }
-    
+
     Serial.printf("\r\nSUCCESS: WiFi connected after %d attempts!\r\n", attempts);
     Serial.printf("IP Address: %s\r\n", WiFi.localIP().toString().c_str());
     Serial.printf("Gateway: %s\r\n", WiFi.gatewayIP().toString().c_str());
     Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
     Serial.printf("Signal strength: %d dBm\r\n", WiFi.RSSI());
-    
+
     // Test connectivity with a simple ping to Google DNS
     Serial.println("Testing internet connectivity...");
     esp_task_wdt_reset();
     // Download firmware
     HTTPClient http;
     http.begin(updateInfo.url);
-    
+
     // Enable following redirects (important for URL shorteners like TinyURL)
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    http.setRedirectLimit(10); // Allow up to 10 redirects
-    
+    http.setRedirectLimit(10);        // Allow up to 10 redirects
+
     Serial.printf("Starting download from: %s\r\n", updateInfo.url.c_str());
     int httpCode = http.GET();
-    
+
     Serial.printf("HTTP response code: %d\r\n", httpCode);
-    
+
     if (httpCode != HTTP_CODE_OK) {
         Serial.printf("HTTP GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
-        
+
         // Check for redirect codes that should have been handled
         if (httpCode == 301 || httpCode == 302 || httpCode == 307 || httpCode == 308) {
             String location = http.header("Location");
             Serial.printf("Redirect location: %s\r\n", location.c_str());
         }
-        
+
         http.end();
         return false;
     }
@@ -402,10 +390,10 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         if (n <= 0) break;
         fw_buf.insert(fw_buf.end(), buf, buf + n);
         total_read += n;
-        
+
         // Reset watchdog every 512 bytes to prevent timeout
         esp_task_wdt_reset();
-        
+
         // Print progress every 10KB
         if (total_read % 10240 == 0) {
             Serial.printf("Downloaded %d/%d bytes\r\n", total_read, contentLength);

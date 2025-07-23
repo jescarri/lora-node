@@ -17,7 +17,6 @@ char wifi_password_str[64];
 
 const char* menu[] = {"param", "restart"};
 
-#ifndef NDEBUG
 WiFiManager wifiManager;
 // Use raw pointers for WiFiManager parameters since WiFiManager doesn't take ownership
 // These will be managed manually and cleaned up when no longer needed
@@ -30,7 +29,6 @@ WiFiManagerParameter* calibration_water_value = nullptr;
 WiFiManagerParameter* sleep_time_hours        = nullptr;
 WiFiManagerParameter* wifi_ssid               = nullptr;
 WiFiManagerParameter* wifi_password           = nullptr;
-#endif
 
 void loadSetings() {
     if (settings_has_key("app_eui")) {
@@ -82,7 +80,6 @@ void loadSetings() {
 }
 
 void initMenu() {
-#ifndef NDEBUG
     WiFiClass::mode(WIFI_STA);
     wifiManager.setMinimumSignalQuality(90);
     wifiManager.setRemoveDuplicateAPs(true);
@@ -121,12 +118,9 @@ void initMenu() {
     wifiManager.addParameter(wifi_ssid);
     wifiManager.addParameter(wifi_password);
     wifiManager.setMenu(menu, sizeof(menu) / sizeof(menu[0]));
-#else
     loadSetings();
-#endif
 }
 
-#ifndef NDEBUG
 void startWebConf() {
     leds[0] = CRGB::Red;
     FastLED.show();
@@ -139,9 +133,7 @@ void startWebConf() {
         ESP.restart();
     }
 }
-#endif
 
-#ifndef NDEBUG
 void saveConfigCallback() {
     Serial.println("Should save config");
 
@@ -218,16 +210,12 @@ void saveConfigCallback() {
     FastLED.show();
     wifiManager.startConfigPortal("lora-node");
 }
-#endif
 
-#ifndef NDEBUG
 void configModeCallback(const WiFiManager* /* myWiFiManager */) {
     WiFi.setTxPower(WIFI_POWER_8_5dBm);
     Serial.println("[CALLBACK] configModeCallback fired");
 }
-#endif
 
-#ifndef NDEBUG
 // Cleanup function to delete allocated WiFiManagerParameter objects
 void cleanupWiFiManagerParameters() {
     delete ttn_app_eui;
@@ -248,4 +236,3 @@ void cleanupWiFiManagerParameters() {
     wifi_ssid               = nullptr;
     wifi_password           = nullptr;
 }
-#endif

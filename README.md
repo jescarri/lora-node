@@ -99,10 +99,22 @@ To prevent stack canary watchpoint panics that can occur during OTA operations:
 ### Timeout Constants
 
 - `WIFI_CONNECTION_TIMEOUT`: 8000ms (8 seconds) - Maximum time to wait for WiFi connection
+- `HTTP_TOTAL_TIMEOUT`: 30000ms (30 seconds) - Total HTTP request timeout for OTA downloads
+- `HTTP_CONNECT_TIMEOUT`: 15000ms (15 seconds) - HTTP connection establishment timeout
+- `CONNECTIVITY_TEST_TIMEOUT`: 10000ms (10 seconds) - Internet connectivity test timeout
 - `WATCHDOG_RESET_INTERVAL_DOWNLOAD`: 1000ms (1 second) - Watchdog reset frequency during download
 - `WATCHDOG_RESET_INTERVAL_WIFI_TEST`: 400ms - Watchdog reset frequency during WiFi testing
 - `PROGRESS_UPDATE_INTERVAL`: 5000ms (5 seconds) - Progress update and watchdog reset frequency
 - `CHUNK_SIZE_THRESHOLD`: 51200 bytes (50KB) - Alternative trigger for progress updates
+
+### Network Diagnostics
+
+The OTA system includes comprehensive network diagnostics:
+
+- **Internet Connectivity Test**: Tests HTTP connectivity using httpbin.org before attempting OTA download
+- **Timeout Configuration**: Explicit HTTP timeouts prevent indefinite blocking
+- **Redirect Handling**: Automatic following of HTTP redirects (up to 10 hops) for URL shorteners
+- **Error Reporting**: Detailed error codes and diagnostic messages for troubleshooting
 
 ## Build Commands
 

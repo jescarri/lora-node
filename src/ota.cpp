@@ -267,7 +267,7 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     delay(100);
     Serial.println("Starting WiFi setup for OTA download...");
 
-    // Reset watchdog before starting WiFi operations
+    // Reset watchdog before starting OTA operations
     esp_task_wdt_reset();
 
     // Suspend LMIC operations to prevent WiFi interference
@@ -393,7 +393,15 @@ int contentLength = http.getSize();
     
     // Stream download with chunked MD5 calculation
     WiFiClient* stream = http.getStreamPtr();
-    uint8_t buf[4096];  // 4KB buffer for better performance under poor network
+    
+    // Use heap allocation for buffer to prevent stack overflow
+    uint8_t* buf = (uint8_t*)malloc(2048);  // Reduce buffer size and use heap
+    if (!buf) {
+        Serial.println("Failed to allocate download buffer");
+        http.end();
+        return false;
+    }
+    
     int total_read = 0;
     unsigned long lastWdtReset = millis();
     unsigned long lastProgressUpdate = millis();
@@ -401,13 +409,13 @@ int contentLength = http.getSize();
     Serial.println("Starting streaming OTA download with MD5 verification...");
     
     while (total_read < contentLength && stream->connected()) {
-        // Reset watchdog every 2 seconds to prevent timeout during slow downloads
-        if (millis() - lastWdtReset >= 2000) {
+        // Reset watchdog every 1 second to prevent timeout during slow downloads
+        if (millis() - lastWdtReset >= 1000) {
             esp_task_wdt_reset();
             lastWdtReset = millis();
         }
         
-        int to_read = std::min((int)sizeof(buf), contentLength - total_read);
+        int to_read = std::min(2048, contentLength - total_read);
         int n = stream->read(buf, to_read);
         
         if (n > 0) {
@@ -416,6 +424,7 @@ int contentLength = http.getSize();
             if (written != n) {
                 Serial.printf("OTA write failed: wrote %d of %d bytes\r\n", written, n);
                 Update.abort();
+                free(buf);
                 http.end();
                 return false;
             }
@@ -433,6 +442,7 @@ int contentLength = http.getSize();
         } else if (n < 0) {
             Serial.println("Stream read error");
             Update.abort();
+            free(buf);
             http.end();
             return false;
         } else {
@@ -440,6 +450,10 @@ int contentLength = http.getSize();
             delay(10);
         }
     }
+    
+    // Clean up buffer
+    free(buf);
+    buf = nullptr;
     
     http.end();
     Serial.printf("\r\nDownload completed: %d bytes\r\n", total_read);
@@ -472,6 +486,10 @@ int contentLength = http.getSize();
     }
     
     Serial.println("OTA update completed successfully");
+    
+    // Final watchdog reset after OTA completion
+    esp_task_wdt_reset();
+    
     return true;
 }
 

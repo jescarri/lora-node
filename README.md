@@ -76,6 +76,25 @@ This project uses a single optimized build configuration:
 
 For detailed build information, see [docs/BUILD.md](docs/BUILD.md).
 
+## Watchdog Management for OTA Updates
+
+The firmware implements comprehensive watchdog timer management to prevent timeouts during OTA (Over-The-Air) firmware updates:
+
+### Watchdog Reset Points
+
+- **WiFi Connection Loop**: Reset every 100ms during WiFi connection attempts (8-second timeout)
+- **HTTP Download Loop**: Reset every 2000ms during firmware download to handle slow network conditions
+- **WiFi Test Function**: Reset every 400ms during WiFi connectivity testing
+- **OTA Progress Updates**: Watchdog reset occurs with each progress update (every 5 seconds or 50KB chunks)
+
+### Timeout Constants
+
+- `WIFI_CONNECTION_TIMEOUT`: 8000ms (8 seconds) - Maximum time to wait for WiFi connection
+- `WATCHDOG_RESET_INTERVAL_DOWNLOAD`: 2000ms (2 seconds) - Watchdog reset frequency during download
+- `WATCHDOG_RESET_INTERVAL_WIFI_TEST`: 400ms - Watchdog reset frequency during WiFi testing
+- `PROGRESS_UPDATE_INTERVAL`: 5000ms (5 seconds) - Progress update and watchdog reset frequency
+- `CHUNK_SIZE_THRESHOLD`: 51200 bytes (50KB) - Alternative trigger for progress updates
+
 ## Build Commands
 
 - `make release`: Build the main release environment (ttgo-lora32-v1)

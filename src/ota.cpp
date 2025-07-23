@@ -7,6 +7,8 @@
 #include <sodium.h>
 #include <esp_task_wdt.h>
 #include <lmic.h>
+#include <esp_wifi.h>
+#include <esp_event.h>
 
 // OTA state
 volatile bool ota_in_progress = false;
@@ -255,7 +257,6 @@ bool verify_signature(const String& url, const String& md5sum, const String& sig
     return true;
 }
 
-#include <mbedtls/md5.h>
 bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     if (!updateInfo.valid) {
         Serial.println("Invalid update info");
@@ -308,30 +309,25 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     Serial.printf("Connecting to WiFi SSID: %s\r\n", ssid.c_str());
     WiFi.begin(ssid.c_str(), password.c_str());
 
-    // Wait for WiFi connection with detailed status reporting
-    int attempts = 0;
-    Serial.print("WiFi connection attempts: ");
-    while (WiFi.status() != WL_CONNECTED && attempts < 30) {        // Increased timeout
-        delay(500);
-        Serial.print(".");
-        attempts++;
+    bool connected = false;
+    unsigned long startAttemptTime = millis();
+    Serial.print("Connecting to WiFi...");
 
-        // Reset watchdog every few attempts
-        if (attempts % 5 == 0) {
-            esp_task_wdt_reset();
-            Serial.printf("\r\n[Attempt %d/30] WiFi Status: %d\r\n", attempts, WiFi.status());
-            Serial.print("Continuing: ");
+    while (!connected && (millis() - startAttemptTime < 8000)) {
+        if (WiFi.status() == WL_CONNECTED) {
+            connected = true;
         }
+        delay(100);
+        esp_task_wdt_reset();
     }
 
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.printf("\r\nERROR: Failed to connect to WiFi after %d attempts!\r\n", attempts);
-        Serial.printf("Final WiFi status: %d\r\n", WiFi.status());
-        Serial.println("WiFi status codes: 0=IDLE, 1=NO_SSID, 3=CONNECTED, 4=CONNECT_FAILED, 6=DISCONNECTED");
+    if (!connected) {
+        Serial.println("\nERROR: Failed to connect to WiFi within timeout!");
+        Serial.printf("Final WiFi status: %d\n", WiFi.status());
         return false;
     }
 
-    Serial.printf("\r\nSUCCESS: WiFi connected after %d attempts!\r\n", attempts);
+    Serial.println("\nSUCCESS: WiFi connected!");
     Serial.printf("IP Address: %s\r\n", WiFi.localIP().toString().c_str());
     Serial.printf("Gateway: %s\r\n", WiFi.gatewayIP().toString().c_str());
     Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
@@ -365,7 +361,7 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         http.end();
         return false;
     }
-    int contentLength = http.getSize();
+int contentLength = http.getSize();
     Serial.printf("Content length: %d\r\n", contentLength);
     if (contentLength <= 0) {
         Serial.println("Invalid content length");
@@ -378,56 +374,103 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
         http.end();
         return false;
     }
-    // Download firmware to buffer for MD5 validation
-    std::vector<uint8_t> fw_buf;
-    fw_buf.reserve(contentLength);
+
+    // Show memory stats before starting
+    Serial.printf("Content length: %d bytes (%.2f MB)\r\n", contentLength, contentLength / 1024.0 / 1024.0);
+    Serial.printf("Available heap: %d bytes\r\n", ESP.getFreeHeap());
+    Serial.printf("Largest contiguous block: %d bytes\r\n", ESP.getMaxAllocHeap());
+    
+    // Start OTA update with streaming
+    if (!Update.begin(contentLength)) {
+        Serial.println("Not enough space to begin OTA");
+        http.end();
+        return false;
+    }
+    
+    // Initialize MD5 context for streaming verification using ESP32 built-in
+    MD5Builder md5;
+    md5.begin();
+    
+    // Stream download with chunked MD5 calculation
     WiFiClient* stream = http.getStreamPtr();
-    int total_read     = 0;
-    while (total_read < contentLength) {
-        uint8_t buf[512];
-        int to_read = std::min(512, contentLength - total_read);
-        int n       = stream->read(buf, to_read);
-        if (n <= 0) break;
-        fw_buf.insert(fw_buf.end(), buf, buf + n);
-        total_read += n;
-
-        // Reset watchdog every 512 bytes to prevent timeout
-        esp_task_wdt_reset();
-
-        // Print progress every 10KB
-        if (total_read % 10240 == 0) {
-            Serial.printf("Downloaded %d/%d bytes\r\n", total_read, contentLength);
+    uint8_t buf[4096];  // 4KB buffer for better performance under poor network
+    int total_read = 0;
+    unsigned long lastWdtReset = millis();
+    unsigned long lastProgressUpdate = millis();
+    
+    Serial.println("Starting streaming OTA download with MD5 verification...");
+    
+    while (total_read < contentLength && stream->connected()) {
+        // Reset watchdog every 2 seconds to prevent timeout during slow downloads
+        if (millis() - lastWdtReset >= 2000) {
+            esp_task_wdt_reset();
+            lastWdtReset = millis();
+        }
+        
+        int to_read = std::min((int)sizeof(buf), contentLength - total_read);
+        int n = stream->read(buf, to_read);
+        
+        if (n > 0) {
+            // Write to OTA partition
+            size_t written = Update.write(buf, n);
+            if (written != n) {
+                Serial.printf("OTA write failed: wrote %d of %d bytes\r\n", written, n);
+                Update.abort();
+                http.end();
+                return false;
+            }
+            
+            // Update MD5 hash
+            md5.add(buf, n);
+            total_read += n;
+            
+            // Progress update every 5 seconds or 50KB to reduce serial spam
+            if (millis() - lastProgressUpdate >= 5000 || total_read % 51200 == 0) {
+                Serial.printf("Downloaded %d/%d bytes (%.1f%%)\r\n", 
+                    total_read, contentLength, (total_read * 100.0) / contentLength);
+                lastProgressUpdate = millis();
+            }
+        } else if (n < 0) {
+            Serial.println("Stream read error");
+            Update.abort();
+            http.end();
+            return false;
+        } else {
+            // n == 0, no data available, small delay to prevent busy waiting
+            delay(10);
         }
     }
+    
     http.end();
-    Serial.printf("Downloaded %d bytes\r\n", (int)fw_buf.size());
-    // Calculate MD5
-    unsigned char hash[16];
-    mbedtls_md5(fw_buf.data(), fw_buf.size(), hash);
-    char md5str[33];
-    for (int i = 0; i < 16; ++i) sprintf(md5str + i * 2, "%02x", hash[i]);
-    md5str[32] = 0;
-    Serial.printf("Calculated MD5: %s\r\n", md5str);
+    Serial.printf("\r\nDownload completed: %d bytes\r\n", total_read);
+    
+    if (total_read != contentLength) {
+        Serial.printf("ERROR: Downloaded %d bytes, expected %d\r\n", total_read, contentLength);
+        Update.abort();
+        return false;
+    }
+    
+    // Finalize MD5 calculation
+    md5.calculate();
+    String calculatedMd5 = md5.toString();
+    
+    Serial.printf("Calculated MD5: %s\r\n", calculatedMd5.c_str());
     Serial.printf("Expected MD5: %s\r\n", updateInfo.md5sum.c_str());
-    if (strcasecmp(md5str, updateInfo.md5sum.c_str()) != 0) {
+    
+    if (!calculatedMd5.equalsIgnoreCase(updateInfo.md5sum)) {
         Serial.println("MD5 mismatch! Aborting update.");
+        Update.abort();
         return false;
     }
-    Serial.println("MD5 matches. Proceeding with OTA update.");
-    // Start update
-    if (!Update.begin(fw_buf.size())) {
-        Serial.println("Not enough space to begin OTA");
-        return false;
-    }
-    size_t written = Update.write(fw_buf.data(), fw_buf.size());
-    if (written != fw_buf.size()) {
-        Serial.printf("Written %d of %d bytes\r\n", (int)written, (int)fw_buf.size());
-        return false;
-    }
+    
+    Serial.println("MD5 verification successful!");
+    
+    // Finalize OTA update
     if (!Update.end()) {
-        Serial.println("Update end failed");
+        Serial.printf("Update end failed. Error: %s\r\n", Update.errorString());
         return false;
     }
+    
     Serial.println("OTA update completed successfully");
     return true;
 }
@@ -437,16 +480,11 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
         return false;
     }
 
-    unsigned char hash[16];
-    mbedtls_md5(data, dataLen, hash);
-
-    String calculatedMd5 = "";
-    for (int i = 0; i < 16; i++) {
-        if (hash[i] < 0x10) {
-            calculatedMd5 += "0";
-        }
-        calculatedMd5 += String(hash[i], HEX);
-    }
+    MD5Builder md5;
+    md5.begin();
+    md5.add(const_cast<uint8_t*>(data), dataLen);
+    md5.calculate();
+    String calculatedMd5 = md5.toString();
 
     Serial.print("Calculated MD5: ");
     Serial.println(calculatedMd5);
@@ -476,22 +514,34 @@ bool testWifiConnection(const String& ssid, const String& password) {
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
 
-    // Try to connect for 10 seconds
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
+    // Non-blocking connection with 8 second timeout
+    bool connected = false;
+    unsigned long startTime = millis();
+    unsigned long lastWdtReset = millis();
+    
+    Serial.print("Testing WiFi connection...");
+    
+    while (!connected && (millis() - startTime < 8000)) {
+        if (WiFi.status() == WL_CONNECTED) {
+            connected = true;
+        } else {
+            delay(100);
+            
+            // Reset watchdog every 400ms
+            if (millis() - lastWdtReset >= 400) {
+                esp_task_wdt_reset();
+                lastWdtReset = millis();
+                Serial.print(".");
+            }
+        }
     }
 
-    bool connected = (WiFi.status() == WL_CONNECTED);
-
     if (connected) {
-        Serial.println("WiFi test connection successful");
+        Serial.println("\nWiFi test connection successful");
         Serial.print("IP: ");
         Serial.println(WiFi.localIP());
     } else {
-        Serial.println("WiFi test connection failed");
+        Serial.println("\nWiFi test connection failed");
     }
 
     // Disconnect for testing

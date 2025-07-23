@@ -48,12 +48,8 @@ jobs:
           # Copy build log first (always available)
           cp ci-build-release.log ci-baseline-artifacts/
           
-          # Copy generated files if they exist
-          if [ -f ".pio/build/ttgo-lora32-v1/firmware.elf" ]; then
-            cp .pio/build/ttgo-lora32-v1/firmware.elf ci-baseline-artifacts/release-firmware.elf
-          else
-            echo "WARNING: release firmware.elf not found" >> ci-baseline-artifacts/build-warnings.txt
-          fi
+          # Copy generated files if they exist (excluding ELF files to reduce size)
+          # ELF files are too large for artifacts and not needed for size baseline
           
           if [ -f ".pio/build/ttgo-lora32-v1/firmware.map" ]; then
             cp .pio/build/ttgo-lora32-v1/firmware.map ci-baseline-artifacts/release-firmware.map
@@ -98,12 +94,8 @@ jobs:
           # Copy debug build log
           cp ci-build-debug.log ci-baseline-artifacts/
           
-          # Copy debug generated files if they exist
-          if [ -f ".pio/build/minimal/firmware.elf" ]; then
-            cp .pio/build/minimal/firmware.elf ci-baseline-artifacts/debug-firmware.elf
-          else
-            echo "WARNING: debug firmware.elf not found" >> ci-baseline-artifacts/build-warnings.txt
-          fi
+          # Copy debug generated files if they exist (excluding ELF files to reduce size)
+          # ELF files are too large for artifacts and not needed for size baseline
           
           if [ -f ".pio/build/minimal/firmware.map" ]; then
             cp .pio/build/minimal/firmware.map ci-baseline-artifacts/debug-firmware.map

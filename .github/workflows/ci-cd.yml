@@ -88,9 +88,7 @@ jobs:
           name: build-artifacts-branch-${{ github.sha }}
           path: |
             .pio/build/ttgo-lora32-v1/firmware.map
-            .pio/build/ttgo-lora32-v1/firmware.elf
             .pio/build/minimal/firmware.map
-            .pio/build/minimal/firmware.elf
           retention-days: 30
         if: always()
 
@@ -178,9 +176,7 @@ jobs:
           name: build-artifacts-main-${{ github.sha }}
           path: |
             .pio/build/ttgo-lora32-v1/firmware.map
-            .pio/build/ttgo-lora32-v1/firmware.elf
             .pio/build/minimal/firmware.map
-            .pio/build/minimal/firmware.elf
           retention-days: 30
         if: always()
 
@@ -299,7 +295,6 @@ jobs:
         run: |
           mkdir -p artifacts
           cp .pio/build/ttgo-lora32-v1/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
-          cp .pio/build/ttgo-lora32-v1/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
           cp .pio/build/ttgo-lora32-v1/firmware.map artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.map
           cp .pio/build/ttgo-lora32-v1/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
 
@@ -312,7 +307,7 @@ jobs:
             "branch": "${{ github.ref_name }}",
             "files": {
               "firmware": "firmware-${{ steps.validate-tag.outputs.tag_name }}.bin",
-              "elf": "firmware-${{ steps.validate-tag.outputs.tag_name }}.elf",
+              "map": "firmware-${{ steps.validate-tag.outputs.tag_name }}.map",
               "partitions": "partitions-${{ steps.validate-tag.outputs.tag_name }}.bin"
             }
           }
@@ -339,9 +334,8 @@ jobs:
             - **Commit**: ${{ github.sha }}
 
             ### Artifacts
-            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.bin` - Binary firmware file
-            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.elf` - ELF debug file
-            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.map` - Memory map file (for debugging memory regressions)
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.bin` - Binary firmware file for flashing
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.map` - Memory map file (for debugging memory usage)
             - `partitions-${{ steps.validate-tag.outputs.tag_name }}.bin` - Partition table
             - `build-info-${{ steps.validate-tag.outputs.tag_name }}.json` - Build metadata
 

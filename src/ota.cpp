@@ -1,11 +1,13 @@
 #include "ota.hpp"
 #include "lorawan_settings.hpp"
+#include "lorawan.hpp"
 #include "menu.hpp"
 #include "utils.hpp"
 #include "version.hpp"
 #include "debug.hpp"
 #include <sodium.h>
 #include <esp_task_wdt.h>
+#include <lmic.h>
 
 // OTA state
 volatile bool ota_in_progress = false;
@@ -278,6 +280,18 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     
     // Reset watchdog before starting WiFi operations
     esp_task_wdt_reset();
+    
+    // Suspend LMIC operations to prevent WiFi interference
+    Serial.println("Suspending LoRaWAN operations for WiFi...");
+    extern struct lmic_t LMIC;
+    uint8_t saved_opmode = LMIC.opmode;
+    LMIC.opmode |= OP_SHUTDOWN;  // Temporarily shutdown LMIC
+    
+    // Stop any ongoing LMIC operations
+    os_clearCallback(&sendjob);
+    
+    // Give some time for LMIC to settle
+    delay(100);
     
     // Get saved WiFi credentials
     String ssid     = settings_get_string("wifi_ssid");

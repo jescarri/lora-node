@@ -29,12 +29,17 @@ void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
         auto error = deserializeJson(doc, json);
         if (!error) {
             Serial.println("[OTA] JSON parsed successfully. Triggering firmware update.");
+            Serial.printf("[DEBUG] Raw JSON string: %s\r\n", json.c_str());
+            Serial.printf("[DEBUG] JSON length: %d\r\n", json.length());
+            
             OtaUpdateInfo updateInfo;
             // Extract fields (support both full and short names)
             if (doc["url"]) {
                 updateInfo.url = doc["url"].as<String>();
+                Serial.printf("[DEBUG] Extracted URL (from 'url'): %s\r\n", updateInfo.url.c_str());
             } else if (doc["u"]) {
                 updateInfo.url = doc["u"].as<String>();
+                Serial.printf("[DEBUG] Extracted URL (from 'u'): %s\r\n", updateInfo.url.c_str());
             } else {
                 Serial.println("Missing url field");
                 ota_chunk_buffer.reset();

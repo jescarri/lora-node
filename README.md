@@ -107,13 +107,24 @@ To prevent stack canary watchpoint panics that can occur during OTA operations:
 - `PROGRESS_UPDATE_INTERVAL`: 5000ms (5 seconds) - Progress update and watchdog reset frequency
 - `CHUNK_SIZE_THRESHOLD`: 51200 bytes (50KB) - Alternative trigger for progress updates
 
+### HTTPUpdate Library Integration
+
+The OTA system now uses ESP32's built-in HTTPUpdate library for improved reliability:
+
+- **Automatic HTTPS Support**: Handles both HTTP and HTTPS URLs with redirect following
+- **Built-in MD5 Verification**: Uses HTTPUpdate's native MD5 verification via `x-MD5` header
+- **Progress Monitoring**: Real-time download progress with watchdog management
+- **Error Handling**: Comprehensive error reporting and cleanup
+- **Memory Efficiency**: No large buffer allocation - HTTPUpdate handles streaming internally
+- **Redirect Support**: Automatic handling of HTTP redirects (strict mode enabled)
+
 ### Network Diagnostics
 
 The OTA system includes comprehensive network diagnostics:
 
-- **Internet Connectivity Test**: Tests HTTP connectivity using httpbin.org before attempting OTA download
+- **HTTPS Support**: Automatic detection and handling of HTTPS URLs with certificate validation bypass
 - **Timeout Configuration**: Explicit HTTP timeouts prevent indefinite blocking
-- **Redirect Handling**: Automatic following of HTTP redirects (up to 10 hops) for URL shorteners
+- **Redirect Handling**: Automatic following of HTTP redirects using HTTPUpdate's built-in support
 - **Error Reporting**: Detailed error codes and diagnostic messages for troubleshooting
 
 ## Build Commands

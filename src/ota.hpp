@@ -10,7 +10,8 @@ constexpr int OTA_MAX_BUFFER_SIZE = OTA_MAX_CHUNKS * OTA_CHUNK_SIZE;        // T
 #include "config.hpp"
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <Update.h>
+#include <WiFiClientSecure.h>
+#include <HTTPUpdate.h>
 #include <CayenneLPP.h>
 
 // OTA Parse Result enum

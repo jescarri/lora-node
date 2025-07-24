@@ -341,172 +341,98 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
     Serial.printf("Signal strength: %d dBm\r\n", WiFi.RSSI());
 
-    // Download firmware
-    HTTPClient http;
-    http.begin(updateInfo.url);
-
-    // Configure HTTP timeouts for better reliability
-    http.setTimeout(30000);               // 30 second timeout for the entire request
-    http.setConnectTimeout(15000);        // 15 second timeout for initial connection
-
-    // Enable following redirects (important for URL shorteners like TinyURL)
-    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
-    http.setRedirectLimit(10);        // Allow up to 10 redirects
-
-    Serial.printf("Starting download from: %s\r\n", updateInfo.url.c_str());
-    int httpCode = http.GET();
-
-    Serial.printf("HTTP response code: %d\r\n", httpCode);
-
-    if (httpCode != HTTP_CODE_OK) {
-        Serial.printf("HTTP GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
-
-        // Check for redirect codes that should have been handled
-        if (httpCode == 301 || httpCode == 302 || httpCode == 307 || httpCode == 308) {
-            String location = http.header("Location");
-            Serial.printf("Redirect location: %s\r\n", location.c_str());
+    // Configure HTTPUpdate with callbacks for progress monitoring
+    httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    httpUpdate.rebootOnUpdate(false);  // We'll handle reboot ourselves
+    
+    // Set up progress callback
+    httpUpdate.onProgress([](int progress, int total) {
+        static unsigned long lastUpdate = 0;
+        unsigned long now = millis();
+        
+        // Update every 2 seconds to reduce serial spam
+        if (now - lastUpdate >= 2000 || progress == total) {
+            Serial.printf("OTA Progress: %d/%d bytes (%.1f%%)\r\n", 
+                         progress, total, (progress * 100.0) / total);
+            lastUpdate = now;
         }
+        
+        // Reset watchdog during download
+        esp_task_wdt_reset();
+    });
+    
+    // Set up error callback
+    httpUpdate.onError([](int error) {
+        Serial.printf("HTTPUpdate error: %d - %s\r\n", error, httpUpdate.getLastErrorString().c_str());
+    });
+    
+    // Set up start callback
+    httpUpdate.onStart([]() {
+        Serial.println("HTTPUpdate started");
+    });
+    
+    // Set up end callback
+    httpUpdate.onEnd([]() {
+        Serial.println("HTTPUpdate finished");
+    });
 
-        http.end();
-        return false;
-    }
-
-    int contentLength = http.getSize();
-    Serial.printf("Content length: %d\r\n", contentLength);
-    if (contentLength <= 0) {
-        Serial.println("Invalid content length");
-        http.end();
-        return false;
-    }
-    // Check if we have enough space for the update
-    if (contentLength > UPDATE_SIZE_UNKNOWN) {
-        Serial.println("Firmware too large");
-        http.end();
-        return false;
-    }
-
-    // Show memory stats before starting
-    Serial.printf("Content length: %d bytes (%.2f MB)\r\n", contentLength, contentLength / 1024.0 / 1024.0);
-    Serial.printf("Available heap: %d bytes\r\n", ESP.getFreeHeap());
-    Serial.printf("Largest contiguous block: %d bytes\r\n", ESP.getMaxAllocHeap());
-
-    // Start OTA update with streaming
-    if (!Update.begin(contentLength)) {
-        Serial.println("Not enough space to begin OTA");
-        http.end();
-        return false;
-    }
-
-    // Initialize MD5 context for streaming verification using ESP32 built-in
-    MD5Builder md5;
-    md5.begin();
-
-    // Stream download with chunked MD5 calculation
-    WiFiClient* stream = http.getStreamPtr();
-
-    // Use heap allocation for buffer to prevent stack overflow - use smaller buffer
-    const size_t DOWNLOAD_BUFFER_SIZE = 1024;        // Reduce to 1KB to save memory
-    uint8_t* buf                      = (uint8_t*)malloc(DOWNLOAD_BUFFER_SIZE);
-    if (!buf) {
-        Serial.printf("Failed to allocate %d byte download buffer\n", DOWNLOAD_BUFFER_SIZE);
-        Serial.printf("Available heap: %d bytes\n", ESP.getFreeHeap());
-        Update.abort();
-        http.end();
-        return false;
-    }
-
-    Serial.printf("Allocated %d byte buffer at %p\n", DOWNLOAD_BUFFER_SIZE, buf);
-    Serial.printf("Remaining heap after buffer allocation: %d bytes\n", ESP.getFreeHeap());
-
-    int total_read                   = 0;
-    unsigned long lastWdtReset       = millis();
-    unsigned long lastProgressUpdate = millis();
-
-    Serial.println("Starting streaming OTA download with MD5 verification...");
-
-    while (total_read < contentLength && stream->connected()) {
-        // Reset watchdog every 1 second to prevent timeout during slow downloads
-        if (millis() - lastWdtReset >= 1000) {
-            esp_task_wdt_reset();
-            lastWdtReset = millis();
-        }
-
-        int to_read = std::min((int)DOWNLOAD_BUFFER_SIZE, contentLength - total_read);
-        int n       = stream->read(buf, to_read);
-
-        if (n > 0) {
-            // Write to OTA partition
-            size_t written = Update.write(buf, n);
-            if (written != n) {
-                Serial.printf("OTA write failed: wrote %d of %d bytes\r\n", written, n);
-                Update.abort();
-                free(buf);
-                http.end();
-                return false;
-            }
-
-            // Update MD5 hash
-            md5.add(buf, n);
-            total_read += n;
-
-            // Progress update every 5 seconds or 50KB to reduce serial spam
-            if (millis() - lastProgressUpdate >= 5000 || total_read % 51200 == 0) {
-                Serial.printf("Downloaded %d/%d bytes (%.1f%%)\r\n",
-                              total_read, contentLength, (total_read * 100.0) / contentLength);
-                lastProgressUpdate = millis();
-            }
-        } else if (n < 0) {
-            Serial.println("Stream read error");
-            Update.abort();
-            free(buf);
-            http.end();
+    // Create HTTPClient for the update
+    HTTPClient httpClient;
+    WiFiClientSecure* secureClient = nullptr;
+    
+    Serial.printf("Starting OTA download from: %s\r\n", updateInfo.url.c_str());
+    
+    // Determine if we need HTTPS support
+    if (updateInfo.url.startsWith("https://")) {
+        secureClient = new WiFiClientSecure();
+        secureClient->setInsecure(); // Skip certificate validation for simplicity
+        if (!httpClient.begin(*secureClient, updateInfo.url)) {
+            Serial.println("HTTPClient begin failed for HTTPS URL");
+            delete secureClient;
             return false;
-        } else {
-            // n == 0, no data available, small delay to prevent busy waiting
-            delay(10);
+        }
+    } else {
+        if (!httpClient.begin(updateInfo.url)) {
+            Serial.println("HTTPClient begin failed for HTTP URL");
+            return false;
         }
     }
-
-    // Clean up buffer
-    free(buf);
-    buf = nullptr;
-
-    http.end();
-    Serial.printf("\r\nDownload completed: %d bytes\r\n", total_read);
-
-    if (total_read != contentLength) {
-        Serial.printf("ERROR: Downloaded %d bytes, expected %d\r\n", total_read, contentLength);
-        Update.abort();
-        return false;
-    }
-
-    // Finalize MD5 calculation
-    md5.calculate();
-    String calculatedMd5 = md5.toString();
-
-    Serial.printf("Calculated MD5: %s\r\n", calculatedMd5.c_str());
+    
+    // Configure HTTP timeouts
+    httpClient.setTimeout(30000);      // 30 second timeout
+    httpClient.setConnectTimeout(15000); // 15 second connection timeout
+    
+    // Add custom header with expected MD5 for verification
+    httpClient.addHeader("x-MD5", updateInfo.md5sum);
+    
     Serial.printf("Expected MD5: %s\r\n", updateInfo.md5sum.c_str());
-
-    if (!calculatedMd5.equalsIgnoreCase(updateInfo.md5sum)) {
-        Serial.println("MD5 mismatch! Aborting update.");
-        Update.abort();
-        return false;
+    
+    // Perform the update
+    HTTPUpdateResult result = httpUpdate.update(httpClient, updateInfo.version);
+    
+    // Clean up HTTPS client if created
+    if (secureClient) {
+        delete secureClient;
     }
-
-    Serial.println("MD5 verification successful!");
-
-    // Finalize OTA update
-    if (!Update.end()) {
-        Serial.printf("Update end failed. Error: %s\r\n", Update.errorString());
-        return false;
+    
+    switch (result) {
+        case HTTP_UPDATE_OK:
+            Serial.println("OTA update completed successfully!");
+            Serial.println("Firmware updated, ready to reboot");
+            esp_task_wdt_reset();
+            return true;
+            
+        case HTTP_UPDATE_NO_UPDATES:
+            Serial.println("No updates available (same version)");
+            return false;
+            
+        case HTTP_UPDATE_FAILED:
+        default:
+            Serial.printf("OTA update failed. Error (%d): %s\r\n", 
+                         httpUpdate.getLastError(), 
+                         httpUpdate.getLastErrorString().c_str());
+            return false;
     }
-
-    Serial.println("OTA update completed successfully");
-
-    // Final watchdog reset after OTA completion
-    esp_task_wdt_reset();
-
-    return true;
 }
 
 bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5) {

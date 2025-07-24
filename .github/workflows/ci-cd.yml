@@ -73,13 +73,13 @@ jobs:
           
           echo "Flash used: $FLASH_USED bytes"
           
-          # Check if flash usage exceeds 1,300,000 bytes
-          if [ "$FLASH_USED" -gt 1300000 ]; then
-            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
-            echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+          # Check if flash usage exceeds 1,800,000 bytes (90% of 1.875MB app partition)
+          if [ "$FLASH_USED" -gt 1800000 ]; then
+            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,800,000 bytes"
+            echo "Flash usage: $FLASH_USED / 1,800,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1800000" | bc)%)"
             exit 1
           else
-            echo "✅ Flash usage OK: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+            echo "✅ Flash usage OK: $FLASH_USED / 1,800,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1800000" | bc)%)"
           fi
 
       - name: Store map files as artifacts
@@ -88,9 +88,7 @@ jobs:
           name: build-artifacts-branch-${{ github.sha }}
           path: |
             .pio/build/ttgo-lora32-v1/firmware.map
-            .pio/build/ttgo-lora32-v1/firmware.elf
             .pio/build/minimal/firmware.map
-            .pio/build/minimal/firmware.elf
           retention-days: 30
         if: always()
 
@@ -163,13 +161,13 @@ jobs:
           
           echo "Flash used: $FLASH_USED bytes"
           
-          # Check if flash usage exceeds 1,300,000 bytes
-          if [ "$FLASH_USED" -gt 1300000 ]; then
-            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
-            echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+          # Check if flash usage exceeds 1,800,000 bytes (90% of 1.875MB app partition)
+          if [ "$FLASH_USED" -gt 1800000 ]; then
+            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,800,000 bytes"
+            echo "Flash usage: $FLASH_USED / 1,800,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1800000" | bc)%)"
             exit 1
           else
-            echo "✅ Flash usage OK: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+            echo "✅ Flash usage OK: $FLASH_USED / 1,800,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1800000" | bc)%)"
           fi
 
       - name: Store map files as artifacts
@@ -178,9 +176,7 @@ jobs:
           name: build-artifacts-main-${{ github.sha }}
           path: |
             .pio/build/ttgo-lora32-v1/firmware.map
-            .pio/build/ttgo-lora32-v1/firmware.elf
             .pio/build/minimal/firmware.map
-            .pio/build/minimal/firmware.elf
           retention-days: 30
         if: always()
 
@@ -286,20 +282,19 @@ jobs:
           
           echo "Flash used: $FLASH_USED bytes"
           
-          # Check if flash usage exceeds 1,300,000 bytes
-          if [ "$FLASH_USED" -gt 1300000 ]; then
-            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,300,000 bytes"
-            echo "Flash usage: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+          # Check if flash usage exceeds 1,800,000 bytes (90% of 1.875MB app partition)
+          if [ "$FLASH_USED" -gt 1800000 ]; then
+            echo "❌ ERROR: Flash usage ($FLASH_USED bytes) exceeds limit of 1,800,000 bytes"
+            echo "Flash usage: $FLASH_USED / 1,800,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1800000" | bc)%)"
             exit 1
           else
-            echo "✅ Flash usage OK: $FLASH_USED / 1,300,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1300000" | bc)%)"
+            echo "✅ Flash usage OK: $FLASH_USED / 1,800,000 bytes ($(echo "scale=2; $FLASH_USED * 100 / 1800000" | bc)%)"
           fi
 
       - name: Create release artifacts
         run: |
           mkdir -p artifacts
           cp .pio/build/ttgo-lora32-v1/firmware.bin artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.bin
-          cp .pio/build/ttgo-lora32-v1/firmware.elf artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.elf
           cp .pio/build/ttgo-lora32-v1/firmware.map artifacts/firmware-${{ steps.validate-tag.outputs.tag_name }}.map
           cp .pio/build/ttgo-lora32-v1/partitions.bin artifacts/partitions-${{ steps.validate-tag.outputs.tag_name }}.bin
 
@@ -312,7 +307,7 @@ jobs:
             "branch": "${{ github.ref_name }}",
             "files": {
               "firmware": "firmware-${{ steps.validate-tag.outputs.tag_name }}.bin",
-              "elf": "firmware-${{ steps.validate-tag.outputs.tag_name }}.elf",
+              "map": "firmware-${{ steps.validate-tag.outputs.tag_name }}.map",
               "partitions": "partitions-${{ steps.validate-tag.outputs.tag_name }}.bin"
             }
           }
@@ -339,9 +334,8 @@ jobs:
             - **Commit**: ${{ github.sha }}
 
             ### Artifacts
-            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.bin` - Binary firmware file
-            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.elf` - ELF debug file
-            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.map` - Memory map file (for debugging memory regressions)
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.bin` - Binary firmware file for flashing
+            - `firmware-${{ steps.validate-tag.outputs.tag_name }}.map` - Memory map file (for debugging memory usage)
             - `partitions-${{ steps.validate-tag.outputs.tag_name }}.bin` - Partition table
             - `build-info-${{ steps.validate-tag.outputs.tag_name }}.json` - Build metadata
 

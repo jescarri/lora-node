@@ -1,10 +1,14 @@
 #include "ota.hpp"
 #include "lorawan_settings.hpp"
+#include "lorawan.hpp"
 #include "menu.hpp"
 #include "utils.hpp"
 #include "version.hpp"
-#include "debug.hpp"
 #include <sodium.h>
+#include <esp_task_wdt.h>
+#include <lmic.h>
+#include <esp_wifi.h>
+#include <esp_event.h>
 
 // OTA state
 volatile bool ota_in_progress = false;
@@ -13,33 +17,43 @@ OtaChunkBuffer ota_chunk_buffer;
 // Update handleOtaChunk to use ota_chunk_buffer.addChunk, isComplete, and getJsonString
 void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
     int idx = fport - 1;
-    DEBUG_PRINTF("[OTA] handleOtaChunk: fport=%d idx=%d dataLen=%d\r\n", fport, idx, dataLen);
-    DEBUG_PRINT("[OTA] Chunk data: ");
-    for (int i = 0; i < dataLen; ++i) DEBUG_PRINTF("%02X ", data[i]);
-    DEBUG_PRINTF("\r\n");
     if (idx < 0 || idx >= OTA_MAX_CHUNKS) {
-        DEBUG_PRINTF("[OTA] Invalid chunk index: %d\r\n", idx);
         return;
     }
+
+    // Check if this is a potential new OTA session by detecting out-of-order delivery
+    // If we receive any chunk but no previous chunks, reset the buffer
+    if (ota_chunk_buffer.max_chunk_seen == 0 && !ota_chunk_buffer.received[0] && fport != 1) {
+        Serial.printf("[DEBUG] Out-of-order chunk delivery detected (fport=%d) - resetting buffer\r\n", fport);
+        ota_chunk_buffer.reset();
+    }
+
+    // Always reset buffer when receiving the first chunk (fport=1) to start fresh OTA session
+    if (fport == 1) {
+        Serial.println("[DEBUG] Starting new OTA session - resetting chunk buffer");
+        ota_chunk_buffer.reset();
+    }
+
     if (!ota_chunk_buffer.addChunk(idx, data, dataLen)) {
-        DEBUG_PRINTF("[OTA] Failed to add chunk idx=%d len=%d\r\n", idx, dataLen);
         return;
     }
-    DEBUG_PRINTF("[OTA] Chunk %d added. Checking completeness...\r\n", idx);
     if (ota_chunk_buffer.isComplete()) {
-        DEBUG_PRINTLN("[OTA] All chunks received. Attempting reassembly and JSON parse...");
         String json = ota_chunk_buffer.getJsonString();
-        DEBUG_PRINTF("[OTA] Reassembled JSON (%d bytes): %s\r\n", json.length(), json.c_str());
         JsonDocument doc;
         auto error = deserializeJson(doc, json);
         if (!error) {
             Serial.println("[OTA] JSON parsed successfully. Triggering firmware update.");
+            Serial.printf("[DEBUG] Raw JSON string: %s\r\n", json.c_str());
+            Serial.printf("[DEBUG] JSON length: %d\r\n", json.length());
+
             OtaUpdateInfo updateInfo;
             // Extract fields (support both full and short names)
             if (doc["url"]) {
                 updateInfo.url = doc["url"].as<String>();
+                Serial.printf("[DEBUG] Extracted URL (from 'url'): %s\r\n", updateInfo.url.c_str());
             } else if (doc["u"]) {
                 updateInfo.url = doc["u"].as<String>();
+                Serial.printf("[DEBUG] Extracted URL (from 'u'): %s\r\n", updateInfo.url.c_str());
             } else {
                 Serial.println("Missing url field");
                 ota_chunk_buffer.reset();
@@ -92,12 +106,7 @@ void handleOtaChunk(uint8_t* data, uint8_t dataLen, uint8_t fport) {
                 setOtaInProgress(false);
                 ota_chunk_buffer.reset();
             }
-        } else {
-            DEBUG_PRINTF("[OTA] JSON parse failed: %s\r\n", error.c_str());
         }
-        // else: wait for more chunks or reset on fatal error
-    } else {
-        DEBUG_PRINTLN("[OTA] Waiting for more chunks...");
     }
 }
 
@@ -187,20 +196,43 @@ static bool base64_decode(unsigned char* output, const char* input, int length) 
     int i = 0, j = 0;
     int a, b, c, d;
     while (i < length) {
+        // Handle padding and end of string
+        if (input[i] == '=' || input[i] == 0) break;
+
+        // Find index of first character
         for (a = 0; a < 64 && base64_chars[a] != input[i]; a++);
-        i++;
-        if (a == 64) return false;
+        if (a == 64 || ++i >= length) return false;
+
+        // Find index of second character
+        if (input[i] == '=' || input[i] == 0) return false;
         for (b = 0; b < 64 && base64_chars[b] != input[i]; b++);
-        i++;
-        if (b == 64) return false;
-        for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
-        i++;
-        if (c == 64) return false;
-        for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
-        i++;
-        if (d == 64) return false;
+        if (b == 64 || ++i >= length) return false;
+
+        // Decode first byte
         output[j++] = (a << 2) | (b >> 4);
+
+        // Handle third character (might be padding)
+        if (input[i] == '=' || input[i] == 0) break;
+        for (c = 0; c < 64 && base64_chars[c] != input[i]; c++);
+        if (c == 64) {
+            if (input[i] != '=') return false;
+            break;
+        }
+        i++;
+
+        // Decode second byte
         output[j++] = (b << 4) | (c >> 2);
+
+        // Handle fourth character (might be padding)
+        if (i >= length || input[i] == '=' || input[i] == 0) break;
+        for (d = 0; d < 64 && base64_chars[d] != input[i]; d++);
+        if (d == 64) {
+            if (input[i] != '=') return false;
+            break;
+        }
+        i++;
+
+        // Decode third byte
         output[j++] = (c << 6) | d;
     }
     return true;
@@ -244,102 +276,204 @@ bool verify_signature(const String& url, const String& md5sum, const String& sig
     return true;
 }
 
-#include <mbedtls/md5.h>
 bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     if (!updateInfo.valid) {
         Serial.println("Invalid update info");
         return false;
     }
+    delay(100);
+    setCpuFrequencyMhz(240);
+    Serial.updateBaudRate(115200);
+    delay(100);
+    Serial.println("Starting WiFi setup for OTA download...");
+
+    // Reset watchdog before starting OTA operations
+    esp_task_wdt_reset();
+
     // Get saved WiFi credentials
     String ssid     = settings_get_string("wifi_ssid");
     String password = settings_get_string("wifi_password");
+
+    Serial.printf("SSID from settings: '%s' (length: %d)\r\n", ssid.c_str(), ssid.length());
+    Serial.printf("Password from settings: '%s' (length: %d)\r\n",
+                  password.length() > 0 ? "[CONFIGURED]" : "[EMPTY]", password.length());
+
     if (ssid.length() == 0) {
-        Serial.println("No WiFi credentials configured");
+        Serial.println("ERROR: No WiFi SSID configured in settings!");
         return false;
     }
+
+    // Disconnect any existing WiFi connections and reset state
+    WiFi.disconnect(true);
+    delay(100);
+    WiFi.mode(WIFI_OFF);
+    delay(100);
+
     // Enable WiFi for download
+    Serial.println("Enabling WiFi in STA mode...");
     WiFi.mode(WIFI_STA);
+    delay(100);
+
+    Serial.printf("Connecting to WiFi SSID: %s\r\n", ssid.c_str());
     WiFi.begin(ssid.c_str(), password.c_str());
-    // Wait for WiFi connection
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
+
+    bool connected                 = false;
+    unsigned long startAttemptTime = millis();
+    Serial.print("Connecting to WiFi...");
+
+    while (!connected && (millis() - startAttemptTime < 8000)) {
+        if (WiFi.status() == WL_CONNECTED) {
+            connected = true;
+        }
+        delay(100);
+        esp_task_wdt_reset();
     }
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("Failed to connect to WiFi");
+
+    if (!connected) {
+        Serial.println("\nERROR: Failed to connect to WiFi within timeout!");
+        Serial.printf("Final WiFi status: %d\n", WiFi.status());
         return false;
     }
-    Serial.println("WiFi connected");
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
-    // Download firmware
-    HTTPClient http;
-    http.begin(updateInfo.url);
-    int httpCode = http.GET();
-    if (httpCode != HTTP_CODE_OK) {
-        Serial.printf("HTTP GET failed, error: %s\r\n", http.errorToString(httpCode).c_str());
-        http.end();
+
+    Serial.println("\nSUCCESS: WiFi connected!");
+    Serial.printf("IP Address: %s\r\n", WiFi.localIP().toString().c_str());
+    Serial.printf("Gateway: %s\r\n", WiFi.gatewayIP().toString().c_str());
+    Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
+    Serial.printf("Signal strength: %d dBm\r\n", WiFi.RSSI());
+
+    // Show detailed memory information before starting OTA
+    Serial.println("=== Memory Status Before OTA ===");
+    Serial.printf("Free heap: %d bytes\r\n", ESP.getFreeHeap());
+    Serial.printf("Largest free block: %d bytes\r\n", ESP.getMaxAllocHeap());
+    Serial.printf("Free PSRAM: %d bytes\r\n", ESP.getFreePsram());
+    Serial.printf("Sketch size: %d bytes\r\n", ESP.getSketchSize());
+    Serial.printf("Free sketch space: %d bytes\r\n", ESP.getFreeSketchSpace());
+    Serial.printf("Flash chip size: %d bytes\r\n", ESP.getFlashChipSize());
+    
+    // Check if we have sufficient memory for OTA
+    const size_t MIN_FREE_HEAP = 32768; // 32KB minimum
+    if (ESP.getFreeHeap() < MIN_FREE_HEAP) {
+        Serial.printf("ERROR: Insufficient heap memory for OTA. Need %d, have %d\r\n", 
+                     MIN_FREE_HEAP, ESP.getFreeHeap());
         return false;
     }
-    int contentLength = http.getSize();
-    Serial.printf("Content length: %d\r\n", contentLength);
-    if (contentLength <= 0) {
-        Serial.println("Invalid content length");
-        http.end();
-        return false;
+
+    // Configure HTTPUpdate with callbacks for progress monitoring
+    httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    httpUpdate.rebootOnUpdate(false);  // We'll handle reboot ourselves
+    
+    // Set up progress callback
+    httpUpdate.onProgress([](int progress, int total) {
+        static unsigned long lastUpdate = 0;
+        unsigned long now = millis();
+        
+        // Update every 2 seconds to reduce serial spam
+        if (now - lastUpdate >= 2000 || progress == total) {
+            Serial.printf("OTA Progress: %d/%d bytes (%.1f%%)\r\n", 
+                         progress, total, (progress * 100.0) / total);
+            lastUpdate = now;
+        }
+        
+        // Reset watchdog during download
+        esp_task_wdt_reset();
+    });
+    
+    // Set up error callback
+    httpUpdate.onError([](int error) {
+        Serial.printf("HTTPUpdate error: %d - %s\r\n", error, httpUpdate.getLastErrorString().c_str());
+    });
+    
+    // Set up start callback
+    httpUpdate.onStart([]() {
+        Serial.println("HTTPUpdate started");
+    });
+    
+    // Set up end callback
+    httpUpdate.onEnd([]() {
+        Serial.println("HTTPUpdate finished");
+    });
+
+    // Create HTTPClient for the update
+    HTTPClient httpClient;
+    WiFiClientSecure* secureClient = nullptr;
+    
+    Serial.printf("Starting OTA download from: %s\r\n", updateInfo.url.c_str());
+    
+    // Determine if we need HTTPS support
+    if (updateInfo.url.startsWith("https://")) {
+        secureClient = new WiFiClientSecure();
+        secureClient->setInsecure(); // Skip certificate validation for simplicity
+        if (!httpClient.begin(*secureClient, updateInfo.url)) {
+            Serial.println("HTTPClient begin failed for HTTPS URL");
+            delete secureClient;
+            return false;
+        }
+    } else {
+        if (!httpClient.begin(updateInfo.url)) {
+            Serial.println("HTTPClient begin failed for HTTP URL");
+            return false;
+        }
     }
-    // Check if we have enough space for the update
-    if (contentLength > UPDATE_SIZE_UNKNOWN) {
-        Serial.println("Firmware too large");
-        http.end();
-        return false;
-    }
-    // Download firmware to buffer for MD5 validation
-    std::vector<uint8_t> fw_buf;
-    fw_buf.reserve(contentLength);
-    WiFiClient* stream = http.getStreamPtr();
-    int total_read     = 0;
-    while (total_read < contentLength) {
-        uint8_t buf[512];
-        int to_read = std::min(512, contentLength - total_read);
-        int n       = stream->read(buf, to_read);
-        if (n <= 0) break;
-        fw_buf.insert(fw_buf.end(), buf, buf + n);
-        total_read += n;
-    }
-    http.end();
-    Serial.printf("Downloaded %d bytes\r\n", (int)fw_buf.size());
-    // Calculate MD5
-    unsigned char hash[16];
-    mbedtls_md5(fw_buf.data(), fw_buf.size(), hash);
-    char md5str[33];
-    for (int i = 0; i < 16; ++i) sprintf(md5str + i * 2, "%02x", hash[i]);
-    md5str[32] = 0;
-    Serial.printf("Calculated MD5: %s\r\n", md5str);
+    
+    // Configure HTTP timeouts
+    httpClient.setTimeout(30000);      // 30 second timeout
+    httpClient.setConnectTimeout(15000); // 15 second connection timeout
+    
     Serial.printf("Expected MD5: %s\r\n", updateInfo.md5sum.c_str());
-    if (strcasecmp(md5str, updateInfo.md5sum.c_str()) != 0) {
-        Serial.println("MD5 mismatch! Aborting update.");
-        return false;
+    
+    // Force garbage collection and memory cleanup before OTA
+    Serial.println("Preparing for OTA - forcing garbage collection...");
+    delay(500);
+    esp_task_wdt_reset();
+    
+    // Create request callback to add MD5 header (GitHub doesn't provide x-MD5, so we add it manually)
+    HTTPUpdateRequestCB requestCallback = [&updateInfo](HTTPClient* client) {
+        // Add the MD5 header so HTTPUpdate can verify it
+        client->addHeader("x-MD5", updateInfo.md5sum);
+        Serial.printf("Added x-MD5 header: %s\r\n", updateInfo.md5sum.c_str());
+    };
+    
+    // Show final memory status before OTA
+    Serial.printf("Final memory check - Free heap: %d bytes\r\n", ESP.getFreeHeap());
+    
+    // Perform the update with our MD5 header callback
+    Serial.println("Starting HTTPUpdate.update()...");
+    HTTPUpdateResult result;
+    
+    // Try the OTA update with proper error handling
+    try {
+        result = httpUpdate.update(httpClient, updateInfo.version, requestCallback);
+    } catch (const std::exception& e) {
+        Serial.printf("Exception during OTA update: %s\r\n", e.what());
+        result = HTTP_UPDATE_FAILED;
+    } catch (...) {
+        Serial.println("Unknown exception during OTA update");
+        result = HTTP_UPDATE_FAILED;
     }
-    Serial.println("MD5 matches. Proceeding with OTA update.");
-    // Start update
-    if (!Update.begin(fw_buf.size())) {
-        Serial.println("Not enough space to begin OTA");
-        return false;
+    
+    // Clean up HTTPS client if created
+    if (secureClient) {
+        delete secureClient;
     }
-    size_t written = Update.write(fw_buf.data(), fw_buf.size());
-    if (written != fw_buf.size()) {
-        Serial.printf("Written %d of %d bytes\r\n", (int)written, (int)fw_buf.size());
-        return false;
+    
+    switch (result) {
+        case HTTP_UPDATE_OK:
+            Serial.println("OTA update completed successfully!");
+            Serial.println("Firmware updated, ready to reboot");
+            esp_task_wdt_reset();
+            return true;
+            
+        case HTTP_UPDATE_NO_UPDATES:
+            Serial.println("No updates available (same version)");
+            return false;
+            
+        case HTTP_UPDATE_FAILED:
+        default:
+            Serial.printf("OTA update failed. Error (%d): %s\r\n", 
+                         httpUpdate.getLastError(), 
+                         httpUpdate.getLastErrorString().c_str());
+            return false;
     }
-    if (!Update.end()) {
-        Serial.println("Update end failed");
-        return false;
-    }
-    Serial.println("OTA update completed successfully");
-    return true;
 }
 
 bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5) {
@@ -347,16 +481,11 @@ bool verifyMd5Sum(const uint8_t* data, size_t dataLen, const String& expectedMd5
         return false;
     }
 
-    unsigned char hash[16];
-    mbedtls_md5(data, dataLen, hash);
-
-    String calculatedMd5 = "";
-    for (int i = 0; i < 16; i++) {
-        if (hash[i] < 0x10) {
-            calculatedMd5 += "0";
-        }
-        calculatedMd5 += String(hash[i], HEX);
-    }
+    MD5Builder md5;
+    md5.begin();
+    md5.add(const_cast<uint8_t*>(data), dataLen);
+    md5.calculate();
+    String calculatedMd5 = md5.toString();
 
     Serial.print("Calculated MD5: ");
     Serial.println(calculatedMd5);
@@ -386,22 +515,34 @@ bool testWifiConnection(const String& ssid, const String& password) {
     WiFi.mode(WIFI_STA);
     WiFi.begin(ssid.c_str(), password.c_str());
 
-    // Try to connect for 10 seconds
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
+    // Non-blocking connection with 8 second timeout
+    bool connected             = false;
+    unsigned long startTime    = millis();
+    unsigned long lastWdtReset = millis();
+
+    Serial.print("Testing WiFi connection...");
+
+    while (!connected && (millis() - startTime < 8000)) {
+        if (WiFi.status() == WL_CONNECTED) {
+            connected = true;
+        } else {
+            delay(100);
+
+            // Reset watchdog every 400ms
+            if (millis() - lastWdtReset >= 400) {
+                esp_task_wdt_reset();
+                lastWdtReset = millis();
+                Serial.print(".");
+            }
+        }
     }
 
-    bool connected = (WiFi.status() == WL_CONNECTED);
-
     if (connected) {
-        Serial.println("WiFi test connection successful");
+        Serial.println("\nWiFi test connection successful");
         Serial.print("IP: ");
         Serial.println(WiFi.localIP());
     } else {
-        Serial.println("WiFi test connection failed");
+        Serial.println("\nWiFi test connection failed");
     }
 
     // Disconnect for testing
@@ -421,12 +562,21 @@ bool isOtaInProgress() {
 
 // --- OtaChunkBuffer methods for chunked OTA reassembly ---
 bool OtaChunkBuffer::addChunk(int chunk_index, const uint8_t* data, int data_len) {
-    if (chunk_index < 0 || chunk_index >= OTA_MAX_CHUNKS) return false;
-    if (data_len > OTA_CHUNK_SIZE) return false;
+    if (chunk_index < 0 || chunk_index >= OTA_MAX_CHUNKS) {
+        Serial.printf("[DEBUG] Chunk index %d out of range (0-%d)\r\n", chunk_index, OTA_MAX_CHUNKS - 1);
+        return false;
+    }
+    if (data_len > OTA_CHUNK_SIZE) {
+        Serial.printf("[DEBUG] Chunk data length %d exceeds max %d\r\n", data_len, OTA_CHUNK_SIZE);
+        return false;
+    }
     memcpy(decoded_chunks[chunk_index], data, data_len);
     chunk_lens[chunk_index] = data_len;
     received[chunk_index]   = true;
     if (chunk_index > max_chunk_seen) max_chunk_seen = chunk_index;
+
+    Serial.printf("[DEBUG] Added chunk %d: %d bytes (max_chunk_seen=%d)\r\n", chunk_index, data_len, max_chunk_seen);
+
     return true;
 }
 

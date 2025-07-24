@@ -3,7 +3,6 @@
 #include "lorawan_settings.hpp"
 #include "utils.hpp"
 #include "ota.hpp"
-#include "debug.hpp"
 #include <cstring>
 #include <cctype>
 #include "lorawan_settings.hpp"
@@ -94,45 +93,6 @@ void LoraWANPrintLMICOpmode(void) {
 
 void LoraWANDebug(const lmic_t& lmic_check) {
     // Debug output now compile-time disabled for optimized builds
-    DEBUG_PRINT("LMIC.opmode: ");
-    // LoraWANPrintLMICOpmode() is now disabled via debug macros
-    DEBUG_PRINTLN("");
-    DEBUG_PRINTLN("-----");
-
-    DEBUG_PRINT("LMIC.seqnoUp = ");
-    DEBUG_PRINTLN(String(lmic_check.seqnoUp));
-
-    DEBUG_PRINT("LMIC.globalDutyRate = ");
-    DEBUG_PRINT(String(lmic_check.globalDutyRate));
-    DEBUG_PRINT(" osTicks, ");
-    DEBUG_PRINT(String(osticks2ms(lmic_check.globalDutyRate) / 1000));
-    DEBUG_PRINTLN(" sec");
-
-    DEBUG_PRINT("LMIC.globalDutyAvail = ");
-    DEBUG_PRINT(String(lmic_check.globalDutyAvail));
-    DEBUG_PRINT(" osTicks, ");
-    DEBUG_PRINT(String(osticks2ms(lmic_check.globalDutyAvail) / 1000));
-    DEBUG_PRINTLN(" sec");
-
-    DEBUG_PRINT("LMICbandplan_nextTx = ");
-    DEBUG_PRINT(String(LMICbandplan_nextTx(os_getTime())));
-    DEBUG_PRINT(" osTicks, ");
-    DEBUG_PRINT(String(osticks2ms(LMICbandplan_nextTx(os_getTime())) / 1000));
-    DEBUG_PRINTLN(" sec");
-
-    DEBUG_PRINT("os_getTime = ");
-    DEBUG_PRINT(String(os_getTime()));
-    DEBUG_PRINT(" osTicks, ");
-    DEBUG_PRINT(String(osticks2ms(os_getTime()) / 1000));
-    DEBUG_PRINTLN(" sec");
-
-    DEBUG_PRINT("LMIC.txend = ");
-    DEBUG_PRINTLN(String(lmic_check.txend));
-    DEBUG_PRINT("LMIC.txChnl = ");
-    DEBUG_PRINTLN(String(lmic_check.txChnl));
-
-    DEBUG_PRINTLN("");
-    DEBUG_PRINTLN("");
 }
 
 void PrintLMICVersion() {
@@ -400,8 +360,6 @@ void ReadSensors() {
         sd.vBat       = maxlipo.cellVoltage();
         sd.batPercent = maxlipo.cellPercent();
         sd.batRate    = maxlipo.chargeRate();
-        DEBUG_PRINT("----ChargeRate: ");
-        DEBUG_PRINTLN(String(sd.batRate));
     }
     for (int i = 0; i < MAX_SENSOR_READ; i++) {
         float a = static_cast<float>(analogRead(config::SoilSensorPin));
@@ -414,13 +372,4 @@ void ReadSensors() {
                                                        get_calibration_air_value(),
                                                        get_calibration_water_value(), 0, 100));
     sd.soilMoisturePercentage = abs(x);
-    DEBUG_PRINT("X: ");
-    DEBUG_PRINTLN(String(x));
-    DEBUG_PRINT("Moisture ADC: ");
-    DEBUG_PRINT(String(sd.soilMoistureValue));
-    DEBUG_PRINT(", Moisture Percentage: ");
-    DEBUG_PRINT(String(sd.soilMoisturePercentage));
-    DEBUG_PRINT(", vBat ");
-    DEBUG_PRINTLN(String(sd.vBat));
-    DEBUG_PRINTLN("");
 }

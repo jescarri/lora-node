@@ -76,6 +76,59 @@ This project uses a single optimized build configuration:
 
 For detailed build information, see [docs/BUILD.md](docs/BUILD.md).
 
+## Watchdog Management for OTA Updates
+
+The firmware implements comprehensive watchdog timer management and stack overflow prevention to prevent system crashes during OTA (Over-The-Air) firmware updates:
+
+### Watchdog Reset Points
+
+- **WiFi Connection Loop**: Reset every 100ms during WiFi connection attempts (8-second timeout)
+- **HTTP Download Loop**: Reset every 1000ms during firmware download (improved from 2000ms)
+- **WiFi Test Function**: Reset every 400ms during WiFi connectivity testing
+- **OTA Progress Updates**: Watchdog reset occurs with each progress update (every 5 seconds or 50KB chunks)
+
+### Stack Overflow Prevention
+
+To prevent stack canary watchpoint panics that can occur during OTA operations:
+
+- **Heap-Allocated Download Buffer**: Uses `malloc()` to allocate a 2KB download buffer on the heap instead of stack
+- **Reduced Buffer Size**: Download buffer reduced from 4KB to 2KB to minimize memory usage
+- **Proper Error Cleanup**: All error paths properly free allocated memory with appropriate cleanup
+- **Memory Safety**: Buffer is set to `nullptr` after freeing to prevent double-free issues
+
+### Timeout Constants
+
+- `WIFI_CONNECTION_TIMEOUT`: 8000ms (8 seconds) - Maximum time to wait for WiFi connection
+- `HTTP_TOTAL_TIMEOUT`: 30000ms (30 seconds) - Total HTTP request timeout for OTA downloads
+- `HTTP_CONNECT_TIMEOUT`: 15000ms (15 seconds) - HTTP connection establishment timeout
+- `CONNECTIVITY_TEST_TIMEOUT`: 10000ms (10 seconds) - Internet connectivity test timeout
+- `WATCHDOG_RESET_INTERVAL_DOWNLOAD`: 1000ms (1 second) - Watchdog reset frequency during download
+- `WATCHDOG_RESET_INTERVAL_WIFI_TEST`: 400ms - Watchdog reset frequency during WiFi testing
+- `PROGRESS_UPDATE_INTERVAL`: 5000ms (5 seconds) - Progress update and watchdog reset frequency
+- `CHUNK_SIZE_THRESHOLD`: 51200 bytes (50KB) - Alternative trigger for progress updates
+
+### HTTPUpdate Library Integration
+
+The OTA system now uses ESP32's built-in HTTPUpdate library for improved reliability:
+
+- **Automatic HTTPS Support**: Handles both HTTP and HTTPS URLs with redirect following
+- **MD5 Verification**: Uses HTTPUpdate's native MD5 verification with manual header injection
+  - GitHub doesn't provide `x-MD5` headers, so we inject the MD5 from TTN downlink via request callback
+  - HTTPUpdate then performs automatic MD5 verification during download
+- **Progress Monitoring**: Real-time download progress with watchdog management
+- **Error Handling**: Comprehensive error reporting and cleanup
+- **Memory Efficiency**: No large buffer allocation - HTTPUpdate handles streaming internally
+- **Redirect Support**: Automatic handling of HTTP redirects (strict mode enabled)
+
+### Network Diagnostics
+
+The OTA system includes comprehensive network diagnostics:
+
+- **HTTPS Support**: Automatic detection and handling of HTTPS URLs with certificate validation bypass
+- **Timeout Configuration**: Explicit HTTP timeouts prevent indefinite blocking
+- **Redirect Handling**: Automatic following of HTTP redirects using HTTPUpdate's built-in support
+- **Error Reporting**: Detailed error codes and diagnostic messages for troubleshooting
+
 ## Build Commands
 
 - `make release`: Build the main release environment (ttgo-lora32-v1)

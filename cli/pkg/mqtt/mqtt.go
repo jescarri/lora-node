@@ -22,13 +22,16 @@ type Client struct {
 	client mqtt.Client
 }
 
-// TTNMessage represents a TTN MQTT message structure
+// TTNDownlink represents a single TTN downlink message
+type TTNDownlink struct {
+	FPort      int    `json:"f_port"`
+	FRMPayload string `json:"frm_payload"`
+	Priority   string `json:"priority"`
+}
+
+// TTNMessage represents a TTN MQTT message structure with chunked downlinks
 type TTNMessage struct {
-	DownlinkMessage struct {
-		FPort      int    `json:"f_port"`
-		FRMPayload string `json:"frm_payload"`
-		Priority   string `json:"priority"`
-	} `json:"downlink_message"`
+	Downlinks []TTNDownlink `json:"downlinks"`
 }
 
 // NewClient creates a new MQTT client
@@ -67,13 +70,21 @@ func (c *Client) Disconnect() {
 	c.client.Disconnect(250)
 }
 
-// Publish publishes a chunk as a TTN MQTT message
-func (c *Client) Publish(topic string, chunk []byte) error {
-	// Create TTN message structure
-	message := TTNMessage{}
-	message.DownlinkMessage.FPort = 1 // Using fport 1 for OTA chunks
-	message.DownlinkMessage.FRMPayload = base64.StdEncoding.EncodeToString(chunk)
-	message.DownlinkMessage.Priority = "NORMAL"
+// PublishChunks publishes multiple chunks as a single TTN MQTT message with downlinks array
+func (c *Client) PublishChunks(topic string, chunks [][]byte) error {
+	// Create TTN message structure with multiple downlinks
+	message := TTNMessage{
+		Downlinks: make([]TTNDownlink, len(chunks)),
+	}
+
+	// Create downlink for each chunk with incrementing f_port
+	for i, chunk := range chunks {
+		message.Downlinks[i] = TTNDownlink{
+			FPort:      i + 1, // f_port starts at 1 and increments
+			FRMPayload: base64.StdEncoding.EncodeToString(chunk),
+			Priority:   "NORMAL",
+		}
+	}
 
 	// Marshal to JSON
 	payload, err := json.Marshal(message)
@@ -88,6 +99,11 @@ func (c *Client) Publish(topic string, chunk []byte) error {
 	}
 
 	return nil
+}
+
+// Publish publishes a single chunk as a TTN MQTT message (deprecated, use PublishChunks)
+func (c *Client) Publish(topic string, chunk []byte) error {
+	return c.PublishChunks(topic, [][]byte{chunk})
 }
 
 // IsConnected returns true if the client is connected

@@ -1,8 +1,8 @@
 #ifndef OTA_HPP_
 #define OTA_HPP_
 
-constexpr int OTA_MAX_CHUNKS      = 20;                                     // Increased for larger payloads
-constexpr int OTA_CHUNK_SIZE      = 70;                                     // Increased to accommodate base64 encoded payloads
+constexpr int OTA_MAX_CHUNKS      = 30;                                     // Increased for larger payloads
+constexpr int OTA_CHUNK_SIZE      = 100;                                    // Increased to accommodate base64 encoded payloads
 constexpr int OTA_MAX_BUFFER_SIZE = OTA_MAX_CHUNKS * OTA_CHUNK_SIZE;        // Total buffer size
 
 #include <Arduino.h>
@@ -10,7 +10,8 @@ constexpr int OTA_MAX_BUFFER_SIZE = OTA_MAX_CHUNKS * OTA_CHUNK_SIZE;        // T
 #include "config.hpp"
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <Update.h>
+#include <WiFiClientSecure.h>
+#include <HTTPUpdate.h>
 #include <CayenneLPP.h>
 
 // OTA Parse Result enum

@@ -24,7 +24,6 @@ minimal:
 # Test target that calls minimal build for CI readability
 test: minimal  ## Build minimal env (alias for CI)
 
-
 .PHONY: build-cli
 build-cli:
 	cd cli && go build -o lora-sensor-cli .

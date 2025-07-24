@@ -138,10 +138,10 @@ void setup() {
     Serial.print("Button pin raw value: ");
     int pinValue = digitalRead(START_WEB_CONFIG_PIN);
     Serial.println(pinValue);
-    startWebConfig = (pinValue == 0);  // Explicitly check for LOW
+    startWebConfig = (pinValue == 0);        // Explicitly check for LOW
     Serial.print("startWebConfig set to: ");
     Serial.println(startWebConfig ? 1 : 0);
-    bool otaa_cfg  = settings_has_key("ttn_otaa_config");
+    bool otaa_cfg = settings_has_key("ttn_otaa_config");
     Serial.print("WEBCONF: ");
     if (startWebConfig) {
         Serial.println("true");

@@ -112,7 +112,9 @@ To prevent stack canary watchpoint panics that can occur during OTA operations:
 The OTA system now uses ESP32's built-in HTTPUpdate library for improved reliability:
 
 - **Automatic HTTPS Support**: Handles both HTTP and HTTPS URLs with redirect following
-- **Built-in MD5 Verification**: Uses HTTPUpdate's native MD5 verification via `x-MD5` header
+- **MD5 Verification**: Uses HTTPUpdate's native MD5 verification with manual header injection
+  - GitHub doesn't provide `x-MD5` headers, so we inject the MD5 from TTN downlink via request callback
+  - HTTPUpdate then performs automatic MD5 verification during download
 - **Progress Monitoring**: Real-time download progress with watchdog management
 - **Error Handling**: Comprehensive error reporting and cleanup
 - **Memory Efficiency**: No large buffer allocation - HTTPUpdate handles streaming internally

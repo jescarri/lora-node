@@ -341,6 +341,23 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     Serial.printf("DNS: %s\r\n", WiFi.dnsIP().toString().c_str());
     Serial.printf("Signal strength: %d dBm\r\n", WiFi.RSSI());
 
+    // Show detailed memory information before starting OTA
+    Serial.println("=== Memory Status Before OTA ===");
+    Serial.printf("Free heap: %d bytes\r\n", ESP.getFreeHeap());
+    Serial.printf("Largest free block: %d bytes\r\n", ESP.getMaxAllocHeap());
+    Serial.printf("Free PSRAM: %d bytes\r\n", ESP.getFreePsram());
+    Serial.printf("Sketch size: %d bytes\r\n", ESP.getSketchSize());
+    Serial.printf("Free sketch space: %d bytes\r\n", ESP.getFreeSketchSpace());
+    Serial.printf("Flash chip size: %d bytes\r\n", ESP.getFlashChipSize());
+    
+    // Check if we have sufficient memory for OTA
+    const size_t MIN_FREE_HEAP = 32768; // 32KB minimum
+    if (ESP.getFreeHeap() < MIN_FREE_HEAP) {
+        Serial.printf("ERROR: Insufficient heap memory for OTA. Need %d, have %d\r\n", 
+                     MIN_FREE_HEAP, ESP.getFreeHeap());
+        return false;
+    }
+
     // Configure HTTPUpdate with callbacks for progress monitoring
     httpUpdate.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
     httpUpdate.rebootOnUpdate(false);  // We'll handle reboot ourselves
@@ -402,13 +419,37 @@ bool downloadAndInstallFirmware(const OtaUpdateInfo& updateInfo) {
     httpClient.setTimeout(30000);      // 30 second timeout
     httpClient.setConnectTimeout(15000); // 15 second connection timeout
     
-    // Add custom header with expected MD5 for verification
-    httpClient.addHeader("x-MD5", updateInfo.md5sum);
-    
     Serial.printf("Expected MD5: %s\r\n", updateInfo.md5sum.c_str());
     
-    // Perform the update
-    HTTPUpdateResult result = httpUpdate.update(httpClient, updateInfo.version);
+    // Force garbage collection and memory cleanup before OTA
+    Serial.println("Preparing for OTA - forcing garbage collection...");
+    delay(500);
+    esp_task_wdt_reset();
+    
+    // Create request callback to add MD5 header (GitHub doesn't provide x-MD5, so we add it manually)
+    HTTPUpdateRequestCB requestCallback = [&updateInfo](HTTPClient* client) {
+        // Add the MD5 header so HTTPUpdate can verify it
+        client->addHeader("x-MD5", updateInfo.md5sum);
+        Serial.printf("Added x-MD5 header: %s\r\n", updateInfo.md5sum.c_str());
+    };
+    
+    // Show final memory status before OTA
+    Serial.printf("Final memory check - Free heap: %d bytes\r\n", ESP.getFreeHeap());
+    
+    // Perform the update with our MD5 header callback
+    Serial.println("Starting HTTPUpdate.update()...");
+    HTTPUpdateResult result;
+    
+    // Try the OTA update with proper error handling
+    try {
+        result = httpUpdate.update(httpClient, updateInfo.version, requestCallback);
+    } catch (const std::exception& e) {
+        Serial.printf("Exception during OTA update: %s\r\n", e.what());
+        result = HTTP_UPDATE_FAILED;
+    } catch (...) {
+        Serial.println("Unknown exception during OTA update");
+        result = HTTP_UPDATE_FAILED;
+    }
     
     // Clean up HTTPS client if created
     if (secureClient) {

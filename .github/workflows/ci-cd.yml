@@ -7,6 +7,7 @@ on:
     tags:
       - '1*'  # Matches tags starting with 1 (100, 110, 112, etc.)
       - '2*'  # Matches tags starting with 2 (200, 210, 211, etc.)
+      - '3*'  # Matches tags starting with 3 (300, 310, 312, etc.)
   pull_request:
     types: [opened, synchronize, reopened]
 
